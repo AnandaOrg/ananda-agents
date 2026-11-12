@@ -51,6 +51,31 @@ agent's. Every e-mail (proformas with the PDF, reminders, Admin copies) lands in
 
 Ports differ from `ananda-admin` (5433 / 4010 / 3010) so both run side by side.
 
+### On Vercel
+
+`vercel.json` deploys one project with two [services](https://vercel.com/docs/services) on one domain:
+
+| Service | Root | Public path |
+| --- | --- | --- |
+| `api` (NestJS) | `apps/api` | `/api/*` |
+| `web` (Next.js) | `apps/web` | everything else |
+
+There are no bindings, because neither service calls the other from its own server. The browser calls the
+relative `/api`, and the top-level rewrite sends it to `api`, so the session cookie stays first-party. Run
+both services together locally with `vercel dev -L`.
+
+Before the first deploy:
+
+- **Database:** a hosted Postgres, such as Neon from the Vercel Marketplace (use its pooled URL). The `api` build runs
+  the migrations (`node dist/db/migrate.js`), so give preview deployments their own database or branch.
+  Load demo data once with `DATABASE_URL=… pnpm db:seed` if you want it.
+- **Environment variables:** `DATABASE_URL`, `DATA_KEY` (keep the same key, or stored IBANs and contacts
+  become unreadable), `SMTP_*`, `MAIL_FROM`, `SELLER_*`, and `CRON_SECRET`.
+- **Cron:** Vercel Cron calls `GET /api/cron/free-reminders` hourly with `Authorization: Bearer $CRON_SECRET`
+  (refused when `CRON_SECRET` isn't set). An hourly schedule needs the Pro plan; on Hobby, change it to
+  daily. Self-hosted, the in-process `@Cron` runs the same job.
+- The login limit (5 failures per 15 minutes) is stored in Postgres, so it holds across function instances.
+
 ## Tests
 
 ```bash

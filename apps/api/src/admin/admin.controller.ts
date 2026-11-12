@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ConflictException, Controller, Get, NotFoundException, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Get, NotFoundException, Param, ParseUUIDPipe, Post, Inject } from '@nestjs/common';
 import { and, desc, eq, inArray, max, ne, notInArray } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { decisionSchema, ORDER_STATUSES, type OrderStatus } from '@ananda-agents/shared';
@@ -26,8 +26,8 @@ const STAMP = { paid: 'paidAt', sent_to_warehouse: 'sentToWarehouseAt', delivere
 export class AdminController {
   constructor(
     @InjectDb() private readonly db: Db,
-    private readonly audit: AuditService,
-    private readonly notify: NotifyService,
+    @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(NotifyService) private readonly notify: NotifyService,
   ) {}
 
   @Get('queue')

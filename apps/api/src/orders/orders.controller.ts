@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Res, Inject } from '@nestjs/common';
 import type { Response } from 'express';
 import { noteSchema, reminderSchema, saleSchema, type SaleInput } from '@ananda-agents/shared';
 import { CurrentUser, Roles, type AuthUser } from '../core/context';
@@ -10,8 +10,8 @@ import { SalesService } from './sales.service';
 @Controller()
 export class OrdersController {
   constructor(
-    private readonly orders: OrdersService,
-    private readonly sales: SalesService,
+    @Inject(OrdersService) private readonly orders: OrdersService,
+    @Inject(SalesService) private readonly sales: SalesService,
   ) {}
 
   @Post('sales')

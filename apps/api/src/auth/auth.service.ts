@@ -1,8 +1,8 @@
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, UnauthorizedException, Inject } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, sql } from 'drizzle-orm';
 import { InjectDb, type Db } from '../db/db.module';
-import { sessions, users } from '../db/schema';
+import { loginAttempts, sessions, users } from '../db/schema';
 import { randomToken, sha256 } from '../core/crypto';
 import { AuditService } from '../core/audit.service';
 import type { AuthUser } from '../core/context';
@@ -13,26 +13,36 @@ const WINDOW_MS = 15 * 60_000;
 
 @Injectable()
 export class AuthService {
-  private readonly attempts = new Map<string, { n: number; first: number }>();
-
   constructor(
     @InjectDb() private readonly db: Db,
-    private readonly audit: AuditService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   async login(email: string, password: string, ip: string): Promise<{ token: string; user: AuthUser; expires: Date }> {
-    const key = `${email}|${ip}`;
-    const a = this.attempts.get(key);
-    if (a && Date.now() - a.first < WINDOW_MS && a.n >= MAX_ATTEMPTS) {
+    // Stored in Postgres, not in memory, so the limit holds when several API instances run (Vercel).
+    const key = sha256(`${email.toLowerCase()}|${ip}`);
+    const windowStart = new Date(Date.now() - WINDOW_MS);
+    const [a] = await this.db.select().from(loginAttempts).where(eq(loginAttempts.key, key));
+    if (a && a.firstAt > windowStart && a.n >= MAX_ATTEMPTS) {
       throw new HttpException({ message: 'too_many_attempts' }, HttpStatus.TOO_MANY_REQUESTS);
     }
     const [u] = await this.db.select().from(users).where(eq(users.email, email));
     if (!u || !u.active || !(await bcrypt.compare(password, u.passwordHash))) {
-      const fresh = !a || Date.now() - a.first >= WINDOW_MS;
-      this.attempts.set(key, fresh ? { n: 1, first: Date.now() } : { n: a!.n + 1, first: a!.first });
+      // One atomic upsert: count within the current window, or start a new one.
+      const inWindow = sql`${loginAttempts.firstAt} > ${windowStart.toISOString()}`;
+      await this.db
+        .insert(loginAttempts)
+        .values({ key, n: 1, firstAt: new Date() })
+        .onConflictDoUpdate({
+          target: loginAttempts.key,
+          set: {
+            n: sql`case when ${inWindow} then ${loginAttempts.n} + 1 else 1 end`,
+            firstAt: sql`case when ${inWindow} then ${loginAttempts.firstAt} else now() end`,
+          },
+        });
       throw new UnauthorizedException({ message: 'bad_credentials' });
     }
-    this.attempts.delete(key);
+    await this.db.delete(loginAttempts).where(eq(loginAttempts.key, key));
     const token = randomToken();
     const expires = new Date(Date.now() + SESSION_DAYS * 86_400_000);
     await this.db.insert(sessions).values({ userId: u.id, tokenHash: sha256(token), expiresAt: expires });

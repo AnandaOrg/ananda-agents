@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, Inject } from '@nestjs/common';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import {
   PROFORMA_VALIDITY_DAYS,
@@ -31,12 +31,12 @@ export class SalesService {
 
   constructor(
     @InjectDb() private readonly db: Db,
-    private readonly customers: CustomersService,
-    private readonly numbering: NumberingService,
-    private readonly audit: AuditService,
-    private readonly mail: MailService,
-    private readonly notify: NotifyService,
-    private readonly proforma: ProformaService,
+    @Inject(CustomersService) private readonly customers: CustomersService,
+    @Inject(NumberingService) private readonly numbering: NumberingService,
+    @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(MailService) private readonly mail: MailService,
+    @Inject(NotifyService) private readonly notify: NotifyService,
+    @Inject(ProformaService) private readonly proforma: ProformaService,
   ) {}
 
   private async existing(user: AuthUser, key: string): Promise<OrderRecord | null> {

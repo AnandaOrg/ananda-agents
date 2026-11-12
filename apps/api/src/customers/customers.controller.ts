@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Inject } from '@nestjs/common';
 import { newCustomerSchema, optionalNoteSchema, priceRequestSchema, type NewCustomerInput } from '@ananda-agents/shared';
 import { CurrentUser, Roles, type AuthUser } from '../core/context';
 import { ZodPipe } from '../core/zod.pipe';
@@ -7,7 +7,7 @@ import { CustomersService } from './customers.service';
 @Roles('agent')
 @Controller('customers')
 export class CustomersController {
-  constructor(private readonly customers: CustomersService) {}
+  constructor(@Inject(CustomersService) private readonly customers: CustomersService) {}
 
   @Get()
   overview(@CurrentUser() user: AuthUser) {

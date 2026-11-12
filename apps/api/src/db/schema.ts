@@ -41,6 +41,13 @@ export const sessions = pgTable('sessions', {
   createdAt: createdAt(),
 });
 
+/** Failed sign-ins per sha256(e-mail|IP), kept in the database so the limit holds across API instances. */
+export const loginAttempts = pgTable('login_attempts', {
+  key: text('key').primaryKey(),
+  n: integer('n').notNull(),
+  firstAt: ts('first_at').notNull(),
+});
+
 export const customers = pgTable(
   'customers',
   {

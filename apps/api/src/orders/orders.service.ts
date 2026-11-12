@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { and, desc, eq, gte, inArray } from 'drizzle-orm';
 import {
   REMINDER_COOLDOWN_HOURS,
@@ -24,10 +24,10 @@ import { dueThisWeek, isUnpaid, loadOrderRows, toRow, type OrderRecord } from '.
 export class OrdersService {
   constructor(
     @InjectDb() private readonly db: Db,
-    private readonly customers: CustomersService,
-    private readonly audit: AuditService,
-    private readonly mail: MailService,
-    private readonly proforma: ProformaService,
+    @Inject(CustomersService) private readonly customers: CustomersService,
+    @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(MailService) private readonly mail: MailService,
+    @Inject(ProformaService) private readonly proforma: ProformaService,
   ) {}
 
   list(user: AuthUser) {

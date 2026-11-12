@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { and, desc, eq, ilike, isNull, or } from 'drizzle-orm';
 import {
   isReverseCharge,
@@ -31,10 +31,10 @@ type CustomerRecord = typeof customers.$inferSelect;
 export class CustomersService {
   constructor(
     @InjectDb() private readonly db: Db,
-    private readonly vies: ViesService,
-    private readonly audit: AuditService,
-    private readonly mail: MailService,
-    private readonly numbering: NumberingService,
+    @Inject(ViesService) private readonly vies: ViesService,
+    @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(MailService) private readonly mail: MailService,
+    @Inject(NumberingService) private readonly numbering: NumberingService,
   ) {}
 
   // ---------- Lists ----------

@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { dirname, join } from 'node:path';
 import PDFDocument from 'pdfkit';
 import { FLAVOUR_NAMES, formatDate, formatMoney, type Flavour, type ProformaLanguage } from '@ananda-agents/shared';
 import type { OrderRecord } from './order-rows';
 
-const FONT_DIR = join(dirname(require.resolve('dejavu-fonts-ttf/package.json')), 'ttf');
+// Literal paths so the deployment bundler (Vercel) ships the font files with the function.
+const FONT_REGULAR = require.resolve('dejavu-fonts-ttf/ttf/DejaVuSans.ttf');
+const FONT_BOLD = require.resolve('dejavu-fonts-ttf/ttf/DejaVuSans-Bold.ttf');
 
 const L = {
   en: {
@@ -91,8 +92,8 @@ export class ProformaService {
     const s = seller();
 
     const doc = new PDFDocument({ size: 'A4', margin: 48, info: { Title: `${t.title} ${order.number}`, Author: s.name } });
-    doc.registerFont('regular', join(FONT_DIR, 'DejaVuSans.ttf'));
-    doc.registerFont('bold', join(FONT_DIR, 'DejaVuSans-Bold.ttf'));
+    doc.registerFont('regular', FONT_REGULAR);
+    doc.registerFont('bold', FONT_BOLD);
     const chunks: Buffer[] = [];
     doc.on('data', (c: Buffer) => chunks.push(c));
     const done = new Promise<Buffer>((resolve) => doc.on('end', () => resolve(Buffer.concat(chunks))));

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Patch, Put } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Patch, Put, Inject } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { bankFromIban, isValidIban, maskIban, normaliseIban, paymentDetailsSchema, profileSchema, type Locale, type Me } from '@ananda-agents/shared';
 import { InjectDb, type Db } from '../db/db.module';
@@ -12,7 +12,7 @@ import { ZodPipe } from '../core/zod.pipe';
 export class MeController {
   constructor(
     @InjectDb() private readonly db: Db,
-    private readonly audit: AuditService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   @Get()

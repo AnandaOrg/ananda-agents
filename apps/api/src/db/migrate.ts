@@ -9,6 +9,8 @@ async function main() {
     console.log('No migrations yet (run `pnpm db:generate` after adding tables)');
     return;
   }
+  // Runs in the Vercel build (vercel.json), where a missing variable would otherwise mean "localhost".
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   await migrate(drizzle(pool), { migrationsFolder: './drizzle' });
   await pool.end();

@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, Res, Inject } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { loginSchema } from '@ananda-agents/shared';
 import { Public } from '../core/context';
@@ -10,7 +10,7 @@ const secure = () => process.env.COOKIE_SECURE !== 'false' && process.env.NODE_E
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(@Inject(AuthService) private readonly auth: AuthService) {}
 
   @Public()
   @Post('login')
