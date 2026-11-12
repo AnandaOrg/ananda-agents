@@ -1,0 +1,60 @@
+# The whole app in Docker. Ports differ from ananda-admin so both stacks can run side by side.
+#   docker compose up -d --build    # web http://localhost:3020 · API :4020 · Mailpit inbox http://localhost:8027
+#   docker compose up -d db mail    # only Postgres :5434 and Mailpit SMTP :1027, for `pnpm dev`
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ananda
+      POSTGRES_PASSWORD: ananda
+      POSTGRES_DB: ananda_agents
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ananda -d ananda_agents"]
+      interval: 2s
+      retries: 20
+
+  mail:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "1027:1025"
+      - "8027:8025"
+
+  api:
+    build: { context: ., target: api }
+    # DATA_KEY and the SELLER_* details come from apps/api/.env; the lines below point it at the containers.
+    env_file:
+      - path: apps/api/.env
+        required: false
+    environment:
+      DATABASE_URL: postgres://ananda:ananda@db:5432/ananda_agents
+      SMTP_HOST: mail
+      SMTP_PORT: "1025"
+      WEB_ORIGIN: http://localhost:3020
+      # Served over plain http locally; set to true behind HTTPS.
+      COOKIE_SECURE: "false"
+    ports:
+      - "4020:4020"
+    depends_on:
+      db: { condition: service_healthy }
+      mail: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4020/api/health >/dev/null || exit 1"]
+      interval: 3s
+      start_period: 10s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    build: { context: ., target: web }
+    ports:
+      - "3020:3020"
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  pgdata:

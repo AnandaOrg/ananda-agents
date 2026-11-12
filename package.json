@@ -1,0 +1,17 @@
+{
+  "name": "ananda-agents",
+  "private": true,
+  "packageManager": "pnpm@11.8.0",
+  "scripts": {
+    "dev": "pnpm --filter @ananda-agents/shared build && pnpm -r --parallel dev",
+    "build": "pnpm --filter @ananda-agents/shared build && pnpm --filter @ananda-agents/api build && pnpm --filter @ananda-agents/web build",
+    "typecheck": "pnpm -r typecheck",
+    "db:up": "docker compose up -d db mail",
+    "db:generate": "pnpm --filter @ananda-agents/api db:generate",
+    "db:migrate": "pnpm --filter @ananda-agents/api db:migrate",
+    "db:reset": "pnpm --filter @ananda-agents/api db:reset",
+    "test": "pnpm --filter @ananda-agents/shared test",
+    "test:journey": "pnpm --filter @ananda-agents/api test:journey",
+    "db:seed": "pnpm --filter @ananda-agents/api db:seed"
+  }
+}
