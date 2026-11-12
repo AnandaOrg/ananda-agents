@@ -67,13 +67,14 @@ both services together locally with `vercel dev -L`.
 Before the first deploy:
 
 - **Database:** a hosted Postgres, such as Neon from the Vercel Marketplace (use its pooled URL). The `api` build runs
-  the migrations (`node dist/db/migrate.js`), so give preview deployments their own database or branch.
+  the migrations (`pnpm db:migrate`), so give preview deployments their own database or branch.
   Load demo data once with `DATABASE_URL=… pnpm db:seed` if you want it.
 - **Environment variables:** `DATABASE_URL`, `DATA_KEY` (keep the same key, or stored IBANs and contacts
   become unreadable), `SMTP_*`, `MAIL_FROM`, `SELLER_*`, and `CRON_SECRET`.
-- **Cron:** Vercel Cron calls `GET /api/cron/free-reminders` hourly with `Authorization: Bearer $CRON_SECRET`
-  (refused when `CRON_SECRET` isn't set). An hourly schedule needs the Pro plan; on Hobby, change it to
-  daily. Self-hosted, the in-process `@Cron` runs the same job.
+- **Cron:** Vercel Cron calls `GET /api/cron/free-reminders` daily at 06:00 UTC with
+  `Authorization: Bearer $CRON_SECRET` (refused when `CRON_SECRET` isn't set). Hobby allows daily crons
+  only; on Pro, `0 * * * *` makes it hourly. Self-hosted, the in-process `@Cron` runs it hourly.
+- **Demo data on a public URL:** seed with `SEED_PASSWORD=…`, so the users don't get the password printed here.
 - The login limit (5 failures per 15 minutes) is stored in Postgres, so it holds across function instances.
 
 ## Tests

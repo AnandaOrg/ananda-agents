@@ -91,7 +91,8 @@ export class ProformaService {
     const date = (d: string | Date) => formatDate(d, lang, { year: true });
     const s = seller();
 
-    const doc = new PDFDocument({ size: 'A4', margin: 48, info: { Title: `${t.title} ${order.number}`, Author: s.name } });
+    // `font` replaces pdfkit's default Helvetica, whose data it loads in a way bundlers can't trace.
+    const doc = new PDFDocument({ size: 'A4', margin: 48, font: FONT_REGULAR, info: { Title: `${t.title} ${order.number}`, Author: s.name } });
     doc.registerFont('regular', FONT_REGULAR);
     doc.registerFont('bold', FONT_BOLD);
     const chunks: Buffer[] = [];

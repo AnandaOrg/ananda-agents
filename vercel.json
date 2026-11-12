@@ -4,7 +4,7 @@
     "api": {
       "root": "apps/api",
       "framework": "nestjs",
-      "buildCommand": "pnpm --filter @ananda-agents/shared build && pnpm build && node dist/db/migrate.js"
+      "buildCommand": "pnpm --filter @ananda-agents/shared build && pnpm build && pnpm db:migrate"
     },
     "web": {
       "root": "apps/web",
@@ -13,8 +13,23 @@
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": { "service": "api" } },
-    { "source": "/(.*)", "destination": { "service": "web" } }
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "api"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "web"
+      }
+    }
   ],
-  "crons": [{ "path": "/api/cron/free-reminders", "schedule": "0 * * * *" }]
+  "crons": [
+    {
+      "path": "/api/cron/free-reminders",
+      "schedule": "0 6 * * *"
+    }
+  ]
 }

@@ -19,6 +19,8 @@ import * as s from './schema';
 import { encrypt } from '../core/crypto';
 
 export const DEMO_PASSWORD = 'ananda-demo-2026';
+// A public deployment must not use the password printed in this repo: set SEED_PASSWORD there.
+const PASSWORD = process.env.SEED_PASSWORD || DEMO_PASSWORD;
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
 
 async function main() {
@@ -31,7 +33,7 @@ async function main() {
     return;
   }
 
-  const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
+  const hash = await bcrypt.hash(PASSWORD, 10);
   const [ivan, maria, admin] = await db
     .insert(s.users)
     .values([
@@ -166,7 +168,7 @@ async function main() {
     { key: 'customer', next: custNo + 1 },
   ]);
   void admin;
-  console.log(`Demo data loaded. Sign in as ivan@ananda.test (agent) or admin@ananda.test (admin), password ${DEMO_PASSWORD}`);
+  console.log(`Demo data loaded. Sign in as ivan@ananda.test (agent) or admin@ananda.test (admin), password ${process.env.SEED_PASSWORD ? '(SEED_PASSWORD)' : DEMO_PASSWORD}`);
   await pool.end();
 }
 

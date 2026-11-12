@@ -1,3 +1,4 @@
+import './module-paths';
 import 'dotenv/config';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
