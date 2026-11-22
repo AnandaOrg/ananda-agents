@@ -7,7 +7,7 @@ import { ArrowRight, CheckCircle, Info, MagnifyingGlass, Warning, WarningCircle 
 import { isReverseCharge, parseVat, type SearchResult } from '@ananda-agents/shared';
 import { api, post, ApiError } from '../lib/api';
 import { keys, useErrorText, useFmt } from '../lib/hooks';
-import { Panel } from './ui';
+import { Panel, Spinner } from './ui';
 import { useToast } from './toast';
 
 type Mode = { kind: 'find' } | { kind: 'add'; manual: boolean };
@@ -246,23 +246,36 @@ function NewCustomerPanel({ search, manual, onBack, onClose }: { search: NonNull
   }, [submit.error, manual, onBack]);
 
   const err = (cond: boolean) => (touched && !cond ? 'input-error' : '');
+  const missing = [!contact.trim(), !phoneOk, !emailOk, ...(manual ? [!name.trim(), !address.trim(), country.length !== 2] : [])].filter(Boolean).length;
+  // README › Errors: what failed, where the input is; generic failures say what didn't happen.
+  const submitError = submit.error
+    ? submit.error instanceof ApiError && submit.error.code !== 'error' && submit.error.code !== 'server' && submit.error.code !== 'offline'
+      ? errorText(submit.error)
+      : t('notSent')
+    : touched && missing
+      ? t('missing', { n: missing })
+      : undefined;
+  const send = () => {
+    setTouched(true);
+    if (!ok) {
+      // Move to the first field that needs fixing.
+      setTimeout(() => document.querySelector<HTMLElement>('.panel .input-error')?.focus(), 0);
+      return;
+    }
+    if (!submit.isPending) submit.mutate();
+  };
   const fromRegister = <span className="tag">{tc('fromRegister')}</span>;
 
   return (
     <Panel
       title={t('title')}
       onClose={onClose}
+      error={submitError}
       footer={
         <>
           <button className="btn" onClick={onBack}>{tc('back')}</button>
-          <button
-            className="btn btn-primary"
-            disabled={submit.isPending}
-            onClick={() => {
-              setTouched(true);
-              if (ok) submit.mutate();
-            }}
-          >
+          <button className="btn btn-primary" aria-busy={submit.isPending} onClick={send}>
+            {submit.isPending && <Spinner />}
             {t('submit')}
           </button>
         </>
@@ -328,7 +341,6 @@ function NewCustomerPanel({ search, manual, onBack, onClose }: { search: NonNull
       </label>
 
       <p className="hint">{t('approvalNote')}</p>
-      {submit.error && <p className="error-text" role="alert">{errorText(submit.error)}</p>}
     </Panel>
   );
 }

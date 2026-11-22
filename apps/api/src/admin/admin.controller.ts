@@ -8,6 +8,7 @@ import { decrypt } from '../core/crypto';
 import { AuditService } from '../core/audit.service';
 import { NotifyService } from '../core/notify.service';
 import { CurrentUser, Roles, type AuthUser } from '../core/context';
+import { AuthService } from '../auth/auth.service';
 import { ZodPipe } from '../core/zod.pipe';
 
 // The Admin steps the agent app depends on (approve, confirm payment, deliver, invoice). The real
@@ -28,6 +29,7 @@ export class AdminController {
     @InjectDb() private readonly db: Db,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(NotifyService) private readonly notify: NotifyService,
+    @Inject(AuthService) private readonly auth: AuthService,
   ) {}
 
   @Get('queue')
@@ -117,7 +119,7 @@ export class AdminController {
 
   private async pendingCustomer(id: string) {
     const [c] = await this.db.select().from(customers).where(eq(customers.id, id));
-    if (!c) throw new NotFoundException();
+    if (!c) throw new NotFoundException('not_found');
     if (c.status !== 'waiting_for_approval') throw new ConflictException({ message: 'not_pending' });
     return c;
   }
@@ -132,7 +134,7 @@ export class AdminController {
     if (decision !== 'approve' && decision !== 'decline') throw new BadRequestException();
     const approved = decision === 'approve';
     const [r] = await this.db.select().from(requests).where(eq(requests.id, id));
-    if (!r) throw new NotFoundException();
+    if (!r) throw new NotFoundException('not_found');
     if (r.status !== 'pending') throw new ConflictException({ message: 'not_pending' });
     const [c] = r.customerId ? await this.db.select().from(customers).where(eq(customers.id, r.customerId)) : [];
     const [o] = r.orderId ? await this.db.select().from(orders).where(eq(orders.id, r.orderId)) : [];
@@ -165,13 +167,19 @@ export class AdminController {
   }
 
   @Post('orders/:id/status/:to')
-  async advance(@CurrentUser() admin: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Param('to') to: string) {
+  async advance(@CurrentUser() admin: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Param('to') to: string, @Body() body: { code?: unknown } = {}) {
     if (!(ORDER_STATUSES as readonly string[]).includes(to) || to === 'waiting_for_payment') throw new BadRequestException();
     const target = to as Exclude<OrderStatus, 'waiting_for_payment'>;
     const [o] = await this.db.select().from(orders).where(eq(orders.id, id));
-    if (!o) throw new NotFoundException();
+    if (!o) throw new NotFoundException('not_found');
     const allowed = target === 'cancelled' ? o.status === 'waiting_for_payment' : NEXT[o.status] === target;
     if (!allowed) throw new ConflictException({ message: 'bad_transition', from: o.status, to: target });
+    // Confirming a payment is two steps (client decision): the click, then the authenticator code.
+    // Recovery codes are for signing in only.
+    if (target === 'paid') {
+      const code = typeof body?.code === 'string' ? body.code.trim() : '';
+      if (!/^\d{6}$/.test(code) || !(await this.auth.checkCode(admin.id, code))) throw new BadRequestException({ message: 'bad_code' });
+    }
 
     await this.db.transaction(async (tx) => {
       await tx.update(orders).set({ status: target, [STAMP[target]]: new Date() }).where(eq(orders.id, id));

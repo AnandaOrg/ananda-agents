@@ -11,6 +11,9 @@ export interface AuthUser {
 
 export const IS_PUBLIC = 'isPublic';
 export const Public = () => SetMetadata(IS_PUBLIC, true);
+/** Reachable by a session that passed the first sign-in step but not the authenticator code yet. */
+export const ALLOW_PENDING = 'allowPending';
+export const AllowPending = () => SetMetadata(ALLOW_PENDING, true);
 export const ROLES = 'roles';
 export const Roles = (...roles: Role[]) => SetMetadata(ROLES, roles);
 

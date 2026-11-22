@@ -203,7 +203,7 @@ export class CustomersService {
 
   private async get(id: string): Promise<CustomerRecord> {
     const [c] = await this.db.select().from(customers).where(eq(customers.id, id));
-    if (!c) throw new NotFoundException();
+    if (!c) throw new NotFoundException('not_found');
     return c;
   }
 
@@ -247,7 +247,7 @@ export class CustomersService {
 
   async ownCustomer(user: AuthUser, id: string): Promise<CustomerRecord> {
     const c = await this.get(id);
-    if (user.role !== 'admin' && c.ownerAgentId !== user.id) throw new ForbiddenException();
+    if (user.role !== 'admin' && c.ownerAgentId !== user.id) throw new ForbiddenException('forbidden');
     return c;
   }
 

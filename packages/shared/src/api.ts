@@ -4,7 +4,12 @@ import type { CartonsByFlavour, Commission, Flavour, OwnershipState } from './do
 
 export const LOCALES = ['en', 'bg', 'he'] as const;
 export type Locale = (typeof LOCALES)[number];
-export const PROFORMA_LANGUAGES = ['en', 'bg'] as const;
+/** System / Light / Dark; dark is the default (design system › Light mode). */
+export const THEMES = ['system', 'light', 'dark'] as const;
+export type Theme = (typeof THEMES)[number];
+export const PROFORMA_LANGUAGES = ['en', 'bg', 'he'] as const;
+/** Each language named in itself, for pickers. */
+export const LANGUAGE_NAMES = { en: 'English', bg: 'Български', he: 'עברית' } as const;
 export type ProformaLanguage = (typeof PROFORMA_LANGUAGES)[number];
 export type Role = 'agent' | 'admin';
 
@@ -21,6 +26,7 @@ export interface Me {
   email: string;
   role: Role;
   locale: Locale;
+  theme: Theme;
   payment: PaymentDetails;
 }
 
@@ -205,7 +211,28 @@ export interface SaleSent {
 const trimmed = (max: number) => z.string().trim().min(1).max(max);
 export const cartonsSchema = z.record(z.string(), z.number().int().min(0).max(99_999)) as unknown as z.ZodType<CartonsByFlavour>;
 
-export const loginSchema = z.object({ email: z.string().trim().toLowerCase().email(), password: z.string().min(1).max(200) });
+/** Same-site path to return to after signing in. */
+const nextPath = z.string().max(300).regex(/^\/(?!\/)/).optional();
+export const linkRequestSchema = z.object({ email: z.string().trim().toLowerCase().email(), next: nextPath });
+export const linkVerifySchema = z.object({ token: z.string().min(20).max(200) });
+/** An authenticator code (6 digits) or, where allowed, a recovery code. */
+export const codeSchema = z.object({ code: z.string().trim().min(6).max(20) });
+export interface TwoStepState {
+  on: boolean;
+  pending: boolean;
+  email: string;
+}
+export interface TwoStepSetup {
+  secret: string;
+  qrSvg: string;
+  otpauthUrl: string;
+}
+export interface SignedIn {
+  role: Role;
+  locale: Locale;
+  theme: Theme;
+  recoveryCodes?: string[];
+}
 
 export const newCustomerSchema = z.object({
   vatNumber: trimmed(20),
@@ -232,7 +259,7 @@ export const noteSchema = z.object({ note: trimmed(1000) });
 export const optionalNoteSchema = z.object({ note: z.string().trim().max(1000).optional() });
 export const reminderSchema = z.object({ subject: trimmed(200), body: trimmed(5000) });
 export const paymentDetailsSchema = z.object({ accountHolder: trimmed(120), iban: trimmed(40) });
-export const profileSchema = z.object({ locale: z.enum(LOCALES) });
+export const profileSchema = z.object({ locale: z.enum(LOCALES).optional(), theme: z.enum(THEMES).optional() }).refine((v) => v.locale || v.theme, { message: 'empty' });
 export const decisionSchema = z.object({ note: z.string().trim().max(1000).optional() });
 
 export type Health = { ok: boolean; db: 'up' | 'down'; time: string };

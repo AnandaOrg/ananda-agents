@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Patch, Put, Inject } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { bankFromIban, isValidIban, maskIban, normaliseIban, paymentDetailsSchema, profileSchema, type Locale, type Me } from '@ananda-agents/shared';
+import { bankFromIban, isValidIban, maskIban, normaliseIban, paymentDetailsSchema, profileSchema, type Locale, type Me, type Theme } from '@ananda-agents/shared';
 import { InjectDb, type Db } from '../db/db.module';
 import { users } from '../db/schema';
 import { encrypt } from '../core/crypto';
@@ -24,15 +24,16 @@ export class MeController {
       email: u.email,
       role: u.role,
       locale: u.locale,
+      theme: u.theme,
       // The full IBAN never leaves the server; the agent sees the masked form (PRD NFR Privacy).
       payment: { accountHolder: u.accountHolder ?? u.name, ibanMasked: maskIban(u.ibanLast4), bank: u.bank, bic: u.bic, isSet: !!u.ibanEnc },
     };
   }
 
   @Patch()
-  async update(@CurrentUser() user: AuthUser, @Body(new ZodPipe(profileSchema)) body: { locale: Locale }) {
-    await this.db.update(users).set({ locale: body.locale }).where(eq(users.id, user.id));
-    return { locale: body.locale };
+  async update(@CurrentUser() user: AuthUser, @Body(new ZodPipe(profileSchema)) body: { locale?: Locale; theme?: Theme }) {
+    await this.db.update(users).set({ ...(body.locale && { locale: body.locale }), ...(body.theme && { theme: body.theme }) }).where(eq(users.id, user.id));
+    return body;
   }
 
   /** UC-12: IBAN checked locally (mod-97); bank and BIC derived from it; stored encrypted. */

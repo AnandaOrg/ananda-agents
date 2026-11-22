@@ -36,8 +36,8 @@ export class OrdersService {
 
   private async own(user: AuthUser, id: string): Promise<OrderRecord> {
     const [o] = await this.db.select().from(orders).where(eq(orders.id, id));
-    if (!o) throw new NotFoundException();
-    if (user.role !== 'admin' && o.agentId !== user.id) throw new ForbiddenException();
+    if (!o) throw new NotFoundException('not_found');
+    if (user.role !== 'admin' && o.agentId !== user.id) throw new ForbiddenException('forbidden');
     return o;
   }
 

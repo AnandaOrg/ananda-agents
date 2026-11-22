@@ -2,7 +2,6 @@
  * Every amount comes from the shared calculation, so lists, PDFs and commission agree.
  * Run with `pnpm db:reset` (empties the database first) or `pnpm db:seed` on an empty one. */
 import 'dotenv/config';
-import bcrypt from 'bcryptjs';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
@@ -18,9 +17,6 @@ import {
 import * as s from './schema';
 import { encrypt } from '../core/crypto';
 
-export const DEMO_PASSWORD = 'ananda-demo-2026';
-// A public deployment must not use the password printed in this repo: set SEED_PASSWORD there.
-const PASSWORD = process.env.SEED_PASSWORD || DEMO_PASSWORD;
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
 
 async function main() {
@@ -33,13 +29,12 @@ async function main() {
     return;
   }
 
-  const hash = await bcrypt.hash(PASSWORD, 10);
   const [ivan, maria, admin] = await db
     .insert(s.users)
     .values([
-      { email: 'ivan@ananda.test', passwordHash: hash, name: 'Ivan Petrov', role: 'agent', phone: '+359 888 123 456' },
-      { email: 'maria@ananda.test', passwordHash: hash, name: 'Maria Georgieva', role: 'agent', phone: '+359 887 654 321' },
-      { email: 'admin@ananda.test', passwordHash: hash, name: 'ANANDA Office', role: 'admin' },
+      { email: 'ivan@ananda.test', name: 'Ivan Petrov', role: 'agent', phone: '+359 888 123 456' },
+      { email: 'maria@ananda.test', name: 'Maria Georgieva', role: 'agent', phone: '+359 887 654 321' },
+      { email: 'admin@ananda.test', name: 'ANANDA Office', role: 'admin' },
     ])
     .returning();
 
@@ -168,7 +163,7 @@ async function main() {
     { key: 'customer', next: custNo + 1 },
   ]);
   void admin;
-  console.log(`Demo data loaded. Sign in as ivan@ananda.test (agent) or admin@ananda.test (admin), password ${process.env.SEED_PASSWORD ? '(SEED_PASSWORD)' : DEMO_PASSWORD}`);
+  console.log('Demo data loaded. Sign in with an e-mail link as ivan@ananda.test (Broker) or admin@ananda.test (Admin); locally the links arrive in Mailpit (http://localhost:8027). The first sign-in sets up the authenticator app.');
   await pool.end();
 }
 

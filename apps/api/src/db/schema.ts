@@ -8,7 +8,8 @@ const ts = (name: string) => timestamp(name, { withTimezone: true });
 
 export const roleEnum = pgEnum('role', ['agent', 'admin']);
 export const localeEnum = pgEnum('locale', ['en', 'bg', 'he']);
-export const proformaLanguageEnum = pgEnum('proforma_language', ['en', 'bg']);
+export const themeEnum = pgEnum('theme', ['system', 'light', 'dark']);
+export const proformaLanguageEnum = pgEnum('proforma_language', ['en', 'bg', 'he']);
 export const customerStatusEnum = pgEnum('customer_status', ['waiting_for_approval', 'active', 'rejected']);
 export const customerSourceEnum = pgEnum('customer_source', ['vies', 'manual']);
 export const flavourEnum = pgEnum('flavour', ['aloha', 'gaia', 'santorini', 'kyoto']);
@@ -19,10 +20,12 @@ export const requestStatusEnum = pgEnum('request_status', ['pending', 'approved'
 export const users = pgTable('users', {
   id: pk(),
   email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
+  // Sign-in is by e-mail link or Google, then two-step verification; no passwords (client decision).
+  passwordHash: text('password_hash'),
   name: text('name').notNull(),
   role: roleEnum('role').notNull().default('agent'),
   locale: localeEnum('locale').notNull().default('en'),
+  theme: themeEnum('theme').notNull().default('dark'),
   phone: text('phone'),
   accountHolder: text('account_holder'),
   ibanEnc: text('iban_enc'),
@@ -30,6 +33,14 @@ export const users = pgTable('users', {
   bank: text('bank'),
   bic: text('bic'),
   active: boolean('active').notNull().default(true),
+  /** Authenticator-app (TOTP) secret, encrypted; a pending one while set-up is not confirmed yet. */
+  totpSecretEnc: text('totp_secret_enc'),
+  totpPendingEnc: text('totp_pending_enc'),
+  totpEnabledAt: ts('totp_enabled_at'),
+  /** Last accepted 30-second step, so a code can't be used twice. */
+  totpLastStep: integer('totp_last_step'),
+  /** sha256 of unused one-time recovery codes. */
+  recoveryCodes: jsonb('recovery_codes').$type<string[]>().notNull().default([]),
   createdAt: createdAt(),
 });
 
@@ -38,6 +49,18 @@ export const sessions = pgTable('sessions', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   tokenHash: text('token_hash').notNull().unique(),
   expiresAt: ts('expires_at').notNull(),
+  /** When the second step passed; null while the session waits for the authenticator code. */
+  mfaAt: ts('mfa_at'),
+  createdAt: createdAt(),
+});
+
+/** Single-use e-mail sign-in links (15 minutes). */
+export const loginLinks = pgTable('login_links', {
+  id: pk(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull().unique(),
+  expiresAt: ts('expires_at').notNull(),
+  usedAt: ts('used_at'),
   createdAt: createdAt(),
 });
 

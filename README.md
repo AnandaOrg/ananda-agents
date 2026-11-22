@@ -38,13 +38,16 @@ pnpm db:reset                               # empty database, migrations, demo d
 pnpm dev                                    # API http://localhost:4020/api · web http://localhost:3020
 ```
 
-Sign in with password `ananda-demo-2026`:
+Sign-in has no passwords (client decision, 22 Nov 2026): an e-mail link or Google, then a code from an
+authenticator app. Locally, type a demo address on `/login` and open the link from Mailpit
+(http://localhost:8027). The first sign-in shows a QR code to scan with an authenticator app (Google
+Authenticator, Microsoft Authenticator, 1Password…) and then eight one-time recovery codes.
 
 | User | Role | What to try |
 | --- | --- | --- |
-| `ivan@ananda.test` | Sales agent (Ivan Petrov) | Search `BG203145882` → add → (approve as admin) → open the notification → sell → send |
-| `admin@ananda.test` | Admin | `/admin`: approve customers and requests, confirm payment, deliver, invoice |
-| `maria@ananda.test` | Sales agent | Owns Plovdiv Wine House (another agent's customer for Ivan) |
+| `ivan@ananda.test` | Broker (Ivan Petrov) | Search `BG203145882` → add → (approve as Admin) → open the notification → sell → send |
+| `admin@ananda.test` | Admin | Overview (`/admin`): approve customers and requests, confirm payment (needs the authenticator code), deliver, invoice |
+| `maria@ananda.test` | Broker | Owns Plovdiv Wine House (another Broker's customer for Ivan) |
 
 Demo VAT numbers: `BG203145882` not a customer yet · `BG103562271` free to claim · `BG115620839` another
 agent's. Every e-mail (proformas with the PDF, reminders, Admin copies) lands in Mailpit.
@@ -69,13 +72,17 @@ Before the first deploy:
 - **Database:** a hosted Postgres, such as Neon from the Vercel Marketplace (use its pooled URL). The `api` build runs
   the migrations (`pnpm db:migrate`), so give preview deployments their own database or branch.
   Load demo data once with `DATABASE_URL=… pnpm db:seed` if you want it.
-- **Environment variables:** `DATABASE_URL`, `DATA_KEY` (keep the same key, or stored IBANs and contacts
-  become unreadable), `SMTP_*`, `MAIL_FROM`, `SELLER_*`, and `CRON_SECRET`.
+- **Environment variables:** `DATABASE_URL`, `DATA_KEY` (keep the same key, or stored IBANs, contacts and
+  authenticator secrets become unreadable), `SMTP_*`, `MAIL_FROM`, `SELLER_*`, `CRON_SECRET`, and
+  `WEB_ORIGIN` (the site's own address: sign-in links and the Google callback are built from it).
+- **Sign-in needs e-mail:** without a working `SMTP_*` nobody can get a sign-in link. Google sign-in is
+  optional: set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (an OAuth client of type Web application,
+  redirect URI `$WEB_ORIGIN/api/auth/google/callback`); without them the button is hidden.
 - **Cron:** Vercel Cron calls `GET /api/cron/free-reminders` daily at 06:00 UTC with
   `Authorization: Bearer $CRON_SECRET` (refused when `CRON_SECRET` isn't set). Hobby allows daily crons
   only; on Pro, `0 * * * *` makes it hourly. Self-hosted, the in-process `@Cron` runs it hourly.
-- **Demo data on a public URL:** seed with `SEED_PASSWORD=…`, so the users don't get the password printed here.
-- The login limit (5 failures per 15 minutes) is stored in Postgres, so it holds across function instances.
+- Attempt limits (5 per 15 minutes for sign-in links and authenticator codes) are stored in Postgres, so
+  they hold across function instances.
 
 ## Tests
 
@@ -95,11 +102,13 @@ IBAN validation and access rules. Walked through the UI, Journey 1 takes **13 cl
 apps/web  ── /api/* rewrite ──▶  apps/api (NestJS)  ──▶  PostgreSQL
                                      ├─ EU VIES REST API (3 s timeout, cached, manual fallback)
                                      ├─ SMTP (Mailpit locally)
-                                     └─ pdfkit + DejaVu Sans (proforma in EN / BG)
+                                     └─ pdfkit + DejaVu Sans (proforma in EN / BG / HE, Hebrew mirrored)
 ```
 
-- **API modules:** `auth` (e-mail + password, hashed session tokens in an httpOnly cookie, rate-limited
-  login), `customers` (overview, search + VIES, add, claim, take-over, free-from reminder, price
+- **API modules:** `auth` (sign-in by single-use e-mail link or Google, then an authenticator-app code
+  (TOTP, RFC 6238) with one-time recovery codes; hashed session tokens in an httpOnly cookie; a session
+  that hasn't passed the code reaches only the two-step endpoints; attempt limits; confirming a payment
+  asks for the code again), `customers` (overview, search + VIES, add, claim, take-over, free-from reminder, price
   requests), `orders` (send payment request, orders, order page, PDF, corrections, reminders,
   collections, earnings), `me` (language, payment details), `notifications` (bell, deep links, hourly
   free-from job), `admin` (the Admin steps the agent waits on).

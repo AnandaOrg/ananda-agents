@@ -5,12 +5,84 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 const API = process.env.API_URL ?? 'http://localhost:4020/api';
-const PASSWORD = 'ananda-demo-2026';
+const MAILPIT = process.env.MAILPIT_URL ?? 'http://localhost:8027';
+import { createHmac } from 'node:crypto';
+
+// ---------- Authenticator codes (RFC 6238), as an authenticator app computes them ----------
+function base32(s: string) {
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0, value = 0;
+  const out: number[] = [];
+  for (const ch of s.replace(/\s/g, '')) {
+    value = (value << 5) | A.indexOf(ch);
+    bits += 5;
+    if (bits >= 8) { out.push((value >>> (bits - 8)) & 255); bits -= 8; }
+  }
+  return Buffer.from(out);
+}
+function codeAt(secret: string, step: number) {
+  const c = Buffer.alloc(8);
+  c.writeBigUInt64BE(BigInt(step));
+  const mac = createHmac('sha1', base32(secret)).update(c).digest();
+  return String((mac.readUInt32BE(mac[mac.length - 1] & 15) & 0x7fffffff) % 1_000_000).padStart(6, '0');
+}
+const secrets = new Map<string, string>();
+const lastStep = new Map<string, number>();
+/** A code the API hasn't seen yet for this person (each code works once; one step of drift is allowed). */
+async function freshCode(email: string) {
+  for (;;) {
+    const now = Math.floor(Date.now() / 30_000);
+    const step = Math.max(now, (lastStep.get(email) ?? -1) + 1);
+    if (step <= now + 1) { lastStep.set(email, step); return codeAt(secrets.get(email)!, step); }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
+// ---------- Sign-in: e-mail link (read from Mailpit), then the authenticator code ----------
+async function linkToken(email: string, since: number) {
+  for (let i = 0; i < 40; i++) {
+    const list = await (await fetch(`${MAILPIT}/api/v1/messages?limit=20`)).json();
+    const m = list.messages.find((x: any) => x.To.some((t: any) => t.Address === email) && /sign-in link|връзка за вход|קישור הכניסה/.test(x.Subject) && Date.parse(x.Created) >= since - 1000);
+    if (m) {
+      const full = await (await fetch(`${MAILPIT}/api/v1/message/${m.ID}`)).json();
+      return /token=([A-Za-z0-9_-]+)/.exec(full.Text)![1];
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`no sign-in e-mail for ${email}`);
+}
+async function startSignIn(email: string) {
+  const since = Date.now();
+  const r = await fetch(`${API}/auth/link`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) });
+  assert.equal(r.status, 202, `link ${email}`);
+  const v = await fetch(`${API}/auth/link/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: await linkToken(email, since) }) });
+  assert.equal(v.status, 200, `verify ${email}`);
+  return v.headers.get('set-cookie')!.split(';')[0];
+}
+const cookies = new Map<string, string>();
+const recovery = new Map<string, string[]>();
+async function loginCookie(email: string) {
+  if (cookies.has(email)) return cookies.get(email)!;
+  const cookie = await startSignIn(email);
+  const call = (path: string, body?: unknown) =>
+    fetch(`${API}${path}`, { method: body === undefined ? 'GET' : 'POST', headers: { cookie, 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const state = await (await call('/auth/two-step')).json();
+  if (!state.on) {
+    const setup = await (await call('/auth/two-step/setup', {})).json();
+    secrets.set(email, setup.secret.replace(/\s/g, ''));
+    const on = await call('/auth/two-step/enable', { code: await freshCode(email) });
+    assert.equal(on.status, 200, `enable two-step ${email}`);
+    recovery.set(email, (await on.json()).recoveryCodes);
+  } else {
+    const ok = await call('/auth/two-step/verify', { code: await freshCode(email) });
+    assert.equal(ok.status, 200, `two-step ${email}`);
+  }
+  cookies.set(email, cookie);
+  return cookie;
+}
 
 async function session(email: string) {
-  const res = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password: PASSWORD }) });
-  assert.equal(res.status, 200, `login ${email}`);
-  const cookie = res.headers.get('set-cookie')!.split(';')[0];
+  const cookie = await loginCookie(email);
   return async (method: string, path: string, body?: unknown) => {
     const r = await fetch(`${API}${path}`, { method, headers: { cookie, 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
     const text = await r.text();
@@ -81,18 +153,14 @@ test('Journey 1: VAT search → add → approve → sell → proforma sent', asy
 
   // Lifecycle through the Admin: paid → warehouse → delivered → invoice; commission becomes Paid.
   for (const to of ['paid', 'sent_to_warehouse', 'delivered', 'invoice_issued']) {
-    assert.equal((await admin('POST', `/admin/orders/${a.body.orderId}/status/${to}`)).status, 201, to);
+    const body = to === 'paid' ? { code: await freshCode('admin@ananda.test') } : undefined;
+    assert.equal((await admin('POST', `/admin/orders/${a.body.orderId}/status/${to}`, body)).status, 201, to);
   }
   const earnings = await ivan('GET', '/earnings');
   const row = earnings.body.orders.find((o: any) => o.id === a.body.orderId);
   assert.equal(row.commissionStatus, 'paid');
   assert.ok(earnings.body.paidThisMonthCents >= 17_280);
 });
-
-async function loginCookie(email: string) {
-  const res = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password: PASSWORD }) });
-  return res.headers.get('set-cookie')!.split(';')[0];
-}
 
 test('ownership: free customer is claimed, another agent\'s stays private', async () => {
   const ivan = await session('ivan@ananda.test');
@@ -151,4 +219,75 @@ test('access: agents cannot use admin routes; anonymous gets 401', async () => {
   const ivan = await session('ivan@ananda.test');
   assert.equal((await ivan('GET', '/admin/queue')).status, 403);
   assert.equal((await fetch(`${API}/customers`)).status, 401);
+});
+
+test('sign-in: link once, two steps, recovery code, payment needs the code', async () => {
+  // Unknown addresses get the same answer and no e-mail.
+  const unknown = await fetch(`${API}/auth/link`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'nobody@ananda.test' }) });
+  assert.equal(unknown.status, 202);
+
+  // A link works once.
+  const since = Date.now();
+  await fetch(`${API}/auth/link`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'maria@ananda.test' }) });
+  const token = await linkToken('maria@ananda.test', since);
+  const first = await fetch(`${API}/auth/link/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) });
+  assert.equal(first.status, 200);
+  const again = await fetch(`${API}/auth/link/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) });
+  assert.equal((await again.json()).message, 'link_used');
+
+  // Half signed in: nothing but the two-step endpoints.
+  const cookie = first.headers.get('set-cookie')!.split(';')[0];
+  const blocked = await fetch(`${API}/customers`, { headers: { cookie } });
+  assert.equal(blocked.status, 401);
+  assert.equal((await blocked.json()).message, 'mfa_required');
+
+  // Set up the app; a wrong code is refused, the right one signs in and returns 8 recovery codes.
+  const post = (path: string, body: unknown) => fetch(`${API}${path}`, { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const setup = await (await post('/auth/two-step/setup', {})).json();
+  assert.match(setup.qrSvg, /^<svg/);
+  assert.match(setup.otpauthUrl, /^otpauth:\/\/totp\/ANANDA/);
+  secrets.set('maria@ananda.test', setup.secret.replace(/\s/g, ''));
+  assert.equal((await (await post('/auth/two-step/enable', { code: '000000' })).json()).message, 'bad_code');
+  const on = await post('/auth/two-step/enable', { code: await freshCode('maria@ananda.test') });
+  assert.equal(on.status, 200);
+  const codes: string[] = (await on.json()).recoveryCodes;
+  assert.equal(codes.length, 8);
+  assert.equal((await fetch(`${API}/customers`, { headers: { cookie } })).status, 200);
+
+  // Next sign-in: a recovery code works once.
+  const c2 = await startSignIn('maria@ananda.test');
+  const useRecovery = (c: string) => fetch(`${API}/auth/two-step/verify`, { method: 'POST', headers: { cookie: c2, 'content-type': 'application/json' }, body: JSON.stringify({ code: c }) });
+  assert.equal((await useRecovery(codes[0])).status, 200);
+  const c3 = await startSignIn('maria@ananda.test');
+  const reused = await fetch(`${API}/auth/two-step/verify`, { method: 'POST', headers: { cookie: c3, 'content-type': 'application/json' }, body: JSON.stringify({ code: codes[0] }) });
+  assert.equal((await reused.json()).message, 'bad_code');
+
+  // Confirming a payment without the authenticator code is refused.
+  const admin = await session('admin@ananda.test');
+  const queue = await admin('GET', '/admin/queue');
+  const waiting = queue.body.orders.find((o: any) => o.next === 'paid');
+  const noCode = await admin('POST', `/admin/orders/${waiting.id}/status/paid`, {});
+  assert.equal(noCode.body.message, 'bad_code');
+  const stillWaiting = (await admin('GET', '/admin/queue')).body.orders.find((o: any) => o.id === waiting.id);
+  assert.equal(stillWaiting.status, 'waiting_for_payment');
+});
+
+test('proforma in Hebrew: PDF and the customer e-mail', async () => {
+  const ivan = await session('ivan@ananda.test');
+  const list = await ivan('GET', '/customers');
+  const c = list.body.customers.find((x: any) => !['waiting_for_approval', 'rejected', 'new'].includes(x.chip.kind)) ?? list.body.customers[0];
+  const since = Date.now();
+  const sale = await ivan('POST', '/sales', { customerId: c.id, cartons: { gaia: 2 }, language: 'he', idempotencyKey: crypto.randomUUID() });
+  assert.equal(sale.status, 201, JSON.stringify(sale.body));
+  const pdf = await fetch(`${API}/orders/${sale.body.orderId}/proforma.pdf`, { headers: { cookie: await loginCookie('ivan@ananda.test') } });
+  assert.equal(pdf.status, 200);
+  assert.equal(pdf.headers.get('content-type'), 'application/pdf');
+  assert.ok((await pdf.arrayBuffer()).byteLength > 10_000);
+  let subject = '';
+  for (let i = 0; i < 40 && !subject; i++) {
+    const msgs = (await (await fetch(`${MAILPIT}/api/v1/messages?limit=20`)).json()).messages;
+    subject = msgs.find((m: any) => Date.parse(m.Created) >= since - 1000 && m.Subject.includes('פרופורמה'))?.Subject ?? '';
+    if (!subject) await new Promise((r) => setTimeout(r, 250));
+  }
+  assert.match(subject, /ANANDA פרופורמה S-\d{4}/);
 });

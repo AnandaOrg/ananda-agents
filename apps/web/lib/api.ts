@@ -10,6 +10,10 @@ export class ApiError extends Error {
   }
 }
 
+export const SIGNED_OUT_EVENT = 'aa:signed-out';
+
+const STATUS_CODES: Record<number, string> = { 400: 'invalid', 403: 'forbidden', 404: 'not_found', 500: 'server', 502: 'server', 503: 'server' };
+
 export async function api<T = unknown>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   let res: Response;
   try {
@@ -22,14 +26,22 @@ export async function api<T = unknown>(path: string, init: { method?: string; bo
   } catch {
     throw new ApiError(0, 'offline');
   }
-  if (res.status === 401 && typeof window !== 'undefined' && !path.startsWith('/auth/')) {
-    window.location.href = '/login';
-  }
+  // Session expired: the shell shows a "You've been signed out" dialog over the page instead of
+  // throwing the person out mid-task (README › Errors › Signed out).
   const text = await res.text();
   const body = text ? JSON.parse(text) : null;
+  if (res.status === 401 && typeof window !== 'undefined' && !path.startsWith('/auth/')) {
+    // Signed in with a link or Google but no authenticator code yet: finish the second step.
+    if (body?.message === 'mfa_required') {
+      const here = window.location.pathname + window.location.search;
+      window.location.replace(`/login/two-step?next=${encodeURIComponent(here)}`);
+    } else window.dispatchEvent(new Event(SIGNED_OUT_EVENT));
+  }
   if (!res.ok) {
     const msg = body?.message;
-    throw new ApiError(res.status, typeof msg === 'string' ? msg : 'error', body ?? {});
+    // API codes are snake_case; anything else (framework defaults) falls back to a code per status.
+    const code = typeof msg === 'string' && /^[a-z_]+$/.test(msg) ? msg : STATUS_CODES[res.status] ?? 'error';
+    throw new ApiError(res.status, code, body ?? {});
   }
   return body as T;
 }

@@ -4,6 +4,8 @@ import { auditLog } from '../db/schema';
 
 export type AuditAction =
   | 'login'
+  | 'auth.two_step_on'
+  | 'auth.recovery_code_used'
   | 'customer.create'
   | 'customer.approve'
   | 'customer.reject'

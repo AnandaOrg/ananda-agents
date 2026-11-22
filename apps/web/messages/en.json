@@ -27,7 +27,9 @@
     "dueOnReceipt": "Payment due on receipt",
     "dueInDays": "Payment due in {n} days",
     "sameAsBilling": "Same as billing",
-    "fromRegister": "From register"
+    "fromRegister": "From register",
+    "broker": "Broker",
+    "getInTouch": "Get in touch"
   },
   "nav": {
     "customers": "Customers",
@@ -35,11 +37,16 @@
     "collections": "Collections",
     "earnings": "Earnings",
     "newSale": "New sale",
-    "admin": "Admin",
+    "admin": "Overview",
     "notifications": "Notifications",
     "profile": "Profile",
     "oneThingToSetUp": "1 thing to set up",
-    "skip": "Skip to content"
+    "skip": "Skip to content",
+    "appTag": "Sales",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "sections": "Sections",
+    "notificationsNew": "Notifications, {n} new"
   },
   "status": {
     "waiting_for_payment": "Waiting for payment",
@@ -87,7 +94,13 @@
     "noMatchHint": "To add a business, search by its VAT number.",
     "checkRegister": "Check “{q}” in the EU register",
     "empty": "No customers yet. Add your first one from its VAT number.",
-    "sentForApproval": "{name} was sent for approval. You get a notification when you can sell."
+    "sentForApproval": "{name} was sent for approval. You get a notification when you can sell.",
+    "yoursFor": "Yours for 6 months",
+    "lastOrderOn": "Last order {date}",
+    "noMatchVat": "None of your customers has this VAT number",
+    "noMatchName": "None of your customers matches this name",
+    "notYoursYet": "Not one of yours yet? You can add it.",
+    "addAsNew": "Add as a new customer"
   },
   "find": {
     "title": "Find by VAT",
@@ -145,7 +158,9 @@
     "required": "Required",
     "badPhone": "Check the phone number",
     "badEmail": "Check the e-mail address",
-    "exists": "This business is already in ANANDA."
+    "exists": "This business is already in ANANDA.",
+    "missing": "{n, plural, one {One detail is missing.} other {# details are missing.}}",
+    "notSent": "Not sent for approval. Try again."
   },
   "customer": {
     "terms": "Payment terms",
@@ -219,7 +234,9 @@
     "send": "Send payment request",
     "sendHint": "Proforma PDF to the customer",
     "sending": "Sending…",
-    "discounted": "Approved price applied"
+    "discounted": "Approved price applied",
+    "validFor": "{date} ({n} days)",
+    "sendSub": "Proforma PDF to the customer"
   },
   "sent": {
     "title": "Payment request sent",
@@ -229,7 +246,7 @@
     "next": "What happens next",
     "step1": "Customer pays (stock held until {date})",
     "step2": "Admin confirms, warehouse delivers",
-    "step3": "{amount} paid to you",
+    "step3": "{amount} commission paid to you",
     "backToCustomers": "Back to customers",
     "seeInOrders": "See it in Orders"
   },
@@ -258,7 +275,10 @@
     "month": "This month",
     "quarter": "Last 3 months",
     "clear": "Clear",
-    "show": "{n, plural, =0 {No orders} one {Show # order} other {Show # orders}}"
+    "show": "{n, plural, =0 {No orders} one {Show # order} other {Show # orders}}",
+    "all": "All",
+    "done": "Delivered · paid",
+    "nothing": "Nothing matches these filters."
   },
   "order": {
     "meta": "{number} · ordered {date} · {agent}",
@@ -322,7 +342,12 @@
     "noReminder": "no reminder yet",
     "lastReminder": "last reminder {date}",
     "dueOn": "due {date}",
-    "rule": "Reminders are drafted for you to read before sending. The Admins are copied on every one."
+    "rule": "Reminders are drafted for you to read before sending. The Admins are copied on every one.",
+    "nobody": "Nobody",
+    "customer": "Customer",
+    "status": "Status",
+    "amount": "Amount",
+    "actions": "Actions"
   },
   "reminder": {
     "title": "Remind {customer}",
@@ -350,7 +375,8 @@
     "notPaidYet": "customer hasn’t paid",
     "customerPaid": "paid {date}",
     "empty": "No commission yet. It appears here with your first sale.",
-    "footer": "Amounts include 20% VAT on commission. Commission is paid as soon as the sale closes (customer paid in full and received the stock), with no separate payout date."
+    "footer": "Amounts include 20% VAT on commission. Commission is paid as soon as the sale closes (customer paid in full and received the stock), with no separate payout date.",
+    "subtitle": "Commission on your closed sales"
   },
   "profile": {
     "payment": "Payment details",
@@ -360,7 +386,8 @@
     "language": "Language",
     "settings": "Settings",
     "settingsNote": "Notification and display settings will live here.",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "ifInvited": "If invited"
   },
   "payment": {
     "title": "Payment details",
@@ -390,20 +417,69 @@
     "order_paid": "{customer} paid {number}.",
     "order_delivered": "{number} was delivered to {customer}.",
     "commission_paid": "Sale {number} closed: {amount} commission paid to you.",
-    "email_bounced": "Proforma {number} for {customer} could not be e-mailed."
+    "email_bounced": "Proforma {number} for {customer} could not be e-mailed.",
+    "all": "All",
+    "unread": "Unread",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "earlier": "Earlier",
+    "close": "Close",
+    "unreadCount": "{n} unread",
+    "allRead": "All read",
+    "caughtUpTitle": "You're all caught up",
+    "caughtUpText": "Nothing unread. Older ones are under All.",
+    "emptyTitle": "No notifications yet",
+    "emptyText": "You'll hear here when a customer is approved, pays or gets their delivery.",
+    "titles": {
+      "customer_approved": "Customer approved",
+      "customer_rejected": "Customer not approved",
+      "take_over_approved": "Customer moved to you",
+      "take_over_declined": "Take-over declined",
+      "price_approved": "Lower price approved",
+      "price_declined": "Lower price declined",
+      "correction_resolved": "Correction handled",
+      "customer_free": "Customer free to claim",
+      "order_paid": "Payment received",
+      "order_delivered": "Order delivered",
+      "commission_paid": "Commission paid",
+      "email_bounced": "E-mail not delivered"
+    }
   },
   "login": {
     "title": "Sign in",
-    "subtitle": "ANANDA sales agents",
+    "subtitle": "No password: sign in with Google, or get a link by e-mail.",
     "email": "E-mail",
-    "password": "Password",
-    "submit": "Sign in",
-    "bad": "Wrong e-mail or password.",
-    "tooMany": "Too many attempts. Wait 15 minutes and try again."
+    "tooMany": "Too many attempts. Wait 15 minutes and try again.",
+    "offline": "You're offline. Check your connection, then try again.",
+    "subtitleLinkOnly": "No password: we e-mail you a sign-in link.",
+    "google": "Continue with Google",
+    "or": "or",
+    "sendLink": "E-mail me a sign-in link",
+    "typeEmail": "Type your e-mail first.",
+    "badEmail": "That doesn't look like an e-mail address.",
+    "notSent": "The link wasn't sent. Try again.",
+    "checkTitle": "Check your e-mail",
+    "checkSub": "Open the link we sent to sign in. It works for 15 minutes.",
+    "sentTo": "Sent to",
+    "change": "Change",
+    "nothingThere": "Nothing there? Check spam, or send the link again.",
+    "sendAgain": "Send the link again",
+    "sentAgain": "Sent again. Give it a minute.",
+    "noAccountTitle": "No account for this e-mail",
+    "noAccountText": "Brokers join ANANDA by invite. Ask the person who invited you, or use another Google account.",
+    "googleFailedTitle": "Google sign-in didn't go through",
+    "googleFailedText": "Try again, or get a sign-in link by e-mail.",
+    "signingIn": "Signing you in",
+    "checkingLink": "Checking your link…",
+    "expiredTitle": "This sign-in link has expired",
+    "usedTitle": "This sign-in link was already used",
+    "badLinkTitle": "This sign-in link doesn't work",
+    "linkRules": "Links work for 15 minutes and only once.",
+    "newLink": "E-mail me a new link"
   },
   "admin": {
-    "title": "Admin",
-    "intro": "Stand-in for the ANANDA Admin app: the approval, payment and delivery steps the agent app waits for.",
+    "title": "Overview",
+    "intro": "The approval, payment and delivery steps the Broker app waits for.",
     "customers": "Customers waiting for approval",
     "requests": "Requests",
     "orders": "Open orders",
@@ -423,7 +499,22 @@
     "advance_delivered": "Mark delivered",
     "advance_invoice_issued": "Issue invoice",
     "cancelOrder": "Cancel",
-    "reason": "Reason (optional)"
+    "reason": "Reason (optional)",
+    "approved": "Approved",
+    "rejected": "Not approved",
+    "declined": "Declined",
+    "done_paid": "Payment confirmed",
+    "done_sent_to_warehouse": "Released to warehouse",
+    "done_delivered": "Marked delivered",
+    "done_invoice_issued": "Invoice issued",
+    "done_cancelled": "Order cancelled",
+    "confirmTitle": "Confirm payment",
+    "confirmText": "Check the money is in the account, then enter the code from your authenticator app to confirm.",
+    "codeLabel": "Code from your authenticator app",
+    "amount": "Amount",
+    "broker": "Broker",
+    "due": "Due",
+    "notConfirmed": "Payment not confirmed. Try again."
   },
   "errors": {
     "already_exists": "This business is already in ANANDA.",
@@ -436,6 +527,64 @@
     "reminder_cooldown": "One reminder a day per order.",
     "no_customer_email": "This customer has no e-mail for proformas.",
     "not_unpaid": "This order is already paid.",
-    "invalid_iban": "This IBAN is not valid."
+    "invalid_iban": "This IBAN is not valid.",
+    "forbidden": "You don't have access to this.",
+    "not_found": "We can't find this. It may have been deleted.",
+    "server": "Something went wrong on our side. Try again in a minute.",
+    "invalid": "Check the highlighted details.",
+    "bad_code": "That code didn't work. Check the app and try again.",
+    "too_many_attempts": "Too many tries. Wait 15 minutes and try again.",
+    "mfa_required": "Confirm it's you with your authenticator code."
+  },
+  "theme": {
+    "title": "Theme",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark",
+    "toLight": "Switch to light theme",
+    "toDark": "Switch to dark theme"
+  },
+  "states": {
+    "tryAgain": "Try again",
+    "noAccessTitle": "You don't have access to this page",
+    "noAccessText": "It belongs to another broker. Ask an Admin if you think it should be yours.",
+    "notFoundTitle": "We can't find this page",
+    "notFoundText": "It may have been deleted, or the link is out of date.",
+    "backToCustomers": "Back to Customers",
+    "backToOrders": "Back to Orders",
+    "loadListTitle": "Couldn't load this list",
+    "loadPageTitle": "Couldn't load this page",
+    "loadText": "Check your connection, then try again. Nothing was changed.",
+    "serverTitle": "Something went wrong on our side",
+    "serverText": "Try again in a minute. Nothing was changed.",
+    "offline": "You're offline. What you see may be out of date, and changes can't be saved until you're back online.",
+    "backOnline": "You're back online",
+    "signedOutTitle": "You've been signed out",
+    "signedOutText": "For your security, this happens after a while. Your sale draft is kept.",
+    "signIn": "Sign in",
+    "actionFailed": "That didn't go through"
+  },
+  "twoStep": {
+    "title": "Enter your code",
+    "sub": "Open your authenticator app and type the 6-digit code for ANANDA ({email}).",
+    "setupTitle": "Set up two-step sign-in",
+    "setupSub": "Every sign-in asks for a code from an authenticator app, such as Google Authenticator, Microsoft Authenticator or 1Password.",
+    "setupStep1": "Scan this QR code with the app",
+    "qrLabel": "QR code for your authenticator app",
+    "cantScan": "Can't scan it? Type this key in the app",
+    "setupStep2": "Type the 6-digit code the app shows",
+    "turnOn": "Turn on and sign in",
+    "continue": "Continue",
+    "codeLabel": "Code from the app",
+    "recoveryLabel": "Recovery code",
+    "useRecovery": "Use a recovery code instead",
+    "useApp": "Use the code from the app",
+    "badCode": "That code didn't work. Check the app and try again.",
+    "failed": "That didn't go through. Try again.",
+    "recoveryTitle": "Save your recovery codes",
+    "recoverySub": "Each code signs you in once if you lose your phone. Keep them somewhere safe; we show them only now.",
+    "copy": "Copy the codes",
+    "copied": "Copied",
+    "saved": "I've saved them, continue"
   }
 }

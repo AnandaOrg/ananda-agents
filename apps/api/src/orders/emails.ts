@@ -1,12 +1,18 @@
 import { formatDate, formatMoney, type ProformaLanguage } from '@ananda-agents/shared';
 import type { OrderRecord } from './order-rows';
 
-// Customer-facing e-mails in the proforma's language (EN or BG), independent of the agent's UI language.
+// Customer-facing e-mails in the proforma's language (EN, BG or HE), independent of the Broker's UI language.
 
 export function proformaEmail(o: OrderRecord, customerName: string, agentName: string): { subject: string; text: string } {
   const money = formatMoney(o.totalCents, o.language);
   const valid = formatDate(o.validUntil, o.language, { year: true });
   const hold = formatDate(o.holdUntil, o.language, { year: true });
+  if (o.language === 'he') {
+    return {
+      subject: `ANANDA פרופורמה ${o.number} – ${money}`,
+      text: `שלום,\n\nמצורפת חשבונית פרופורמה ${o.number} עבור ${customerName}, על סך ${money}.\nהיא בתוקף עד ${valid}. המלאי שלכם שמור עד ${hold} והמשלוח יוצא לאחר קבלת התשלום.\n\nנא לציין ${o.number} כאסמכתא להעברה.\n\nבברכה,\n${agentName}\nANANDA`,
+    };
+  }
   if (o.language === 'bg') {
     return {
       subject: `Проформа ${o.number} от ANANDA – ${money}`,
@@ -22,6 +28,12 @@ export function proformaEmail(o: OrderRecord, customerName: string, agentName: s
 export function reminderDraft(o: OrderRecord, lang: ProformaLanguage, daysLate: number, agentName: string): { subject: string; body: string } {
   const money = formatMoney(o.totalCents, lang);
   const due = formatDate(o.dueDate, lang, { year: true });
+  if (lang === 'he') {
+    return {
+      subject: `תזכורת: פרופורמה ${o.number} – ${money}`,
+      body: `שלום,\n\nמועד התשלום של פרופורמה ${o.number} על סך ${money} היה ${due}${daysLate > 0 ? ` והיא באיחור של ${daysLate === 1 ? 'יום אחד' : `${daysLate} ימים`}` : ''}. התשלום עדיין לא התקבל אצלנו.\n\nנא להעביר את הסכום עם ${o.number} כאסמכתא. אם כבר שילמתם, אפשר פשוט להשיב עם אישור ההעברה.\n\nתודה,\n${agentName}\nANANDA`,
+    };
+  }
   if (lang === 'bg') {
     return {
       subject: `Напомняне: проформа ${o.number} – ${money}`,

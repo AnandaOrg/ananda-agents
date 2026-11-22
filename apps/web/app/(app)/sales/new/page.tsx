@@ -3,10 +3,12 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Backspace, CaretRight, MagnifyingGlass, Minus, PaperPlaneTilt, Plus, Tag } from '@phosphor-icons/react';
+import { Backspace, CaretDown, CaretRight, MagnifyingGlass, Minus, PaperPlaneTilt, Plus, Tag } from '@phosphor-icons/react';
 import {
   FLAVOURS,
   FLAVOUR_NAMES,
+  LANGUAGE_NAMES,
+  PROFORMA_LANGUAGES,
   PROFORMA_VALIDITY_DAYS,
   UNITS_PER_CARTON,
   addDays,
@@ -18,7 +20,7 @@ import {
   type SaleSent,
 } from '@ananda-agents/shared';
 import { useCrumbs } from '../../../../components/AppShell';
-import { ErrorBox, FlavourDot, Loading, Panel } from '../../../../components/ui';
+import { FlavourDot, InlineError, Loading, PageHeader, Panel, Pill, QueryError, Spinner } from '../../../../components/ui';
 import { useToast } from '../../../../components/toast';
 import { post } from '../../../../lib/api';
 import { keys, useCustomer, useCustomers, useErrorText, useFmt } from '../../../../lib/hooks';
@@ -84,11 +86,10 @@ function NewSale() {
   const customer = useCustomer(customerId);
   const { draft, update, clear, loaded } = useDraft(customerId);
   const [picker, setPicker] = useState(false);
-  const errorText = useErrorText();
 
   useCrumbs(
     step === 'review'
-      ? [{ label: t('nav.newSale'), href: `/sales/new?customer=${customerId}` }, { label: t('review.title') }]
+      ? [{ label: t('sale.title'), href: `/sales/new?customer=${customerId}` }, { label: t('review.title') }]
       : [{ label: t('customers.title'), href: '/customers' }, { label: t('sale.title') }],
   );
 
@@ -99,7 +100,7 @@ function NewSale() {
 
   if (!customerId) return <CustomerPicker onPick={choose} inline />;
   if (customer.isLoading || !loaded) return <Loading />;
-  if (customer.error || !customer.data) return <ErrorBox text={errorText(customer.error)} onRetry={() => customer.refetch()} />;
+  if (customer.error || !customer.data) return <QueryError error={customer.error} onRetry={() => customer.refetch()} />;
 
   const c = customer.data;
   return (
@@ -127,21 +128,20 @@ function CustomerPicker({ onPick, inline }: { onPick: (id: string) => void; inli
   const body = (
     <div className="stack">
       <div className="stack-sm">
-        <h1 className={inline ? 'title-1' : 'title-3'}>{t('pickCustomer')}</h1>
-        <p className="muted small">{t('pickHint')}</p>
+        {inline ? <PageHeader title={t('pickCustomer')} line={t('pickHint')} /> : <p className="muted">{t('pickHint')}</p>}
       </div>
       <div className="search">
         <MagnifyingGlass size={18} />
         <input className="input" value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('pickCustomer')} autoFocus={inline} />
       </div>
-      {list.isLoading && <Loading />}
+      {list.isLoading && <Loading variant="rows" />}
       {list.data && !active.length && <p className="muted">{t('noCustomers')}</p>}
       <div className="list" style={{ '--cols': '1fr 20px' } as React.CSSProperties}>
         {shown.map((c) => (
           <button key={c.id} className="list-row clickable" style={{ border: 0, background: 'none', textAlign: 'start', cursor: 'pointer', width: '100%' }} onClick={() => onPick(c.id)}>
             <span className="cell-main">
               <span className="strong">{c.name}</span>
-              <span className="small subtle num">{c.vatNumber}</span>
+              <span className="small muted num">{c.vatNumber}</span>
             </span>
             <CaretRight size={16} className="chev" />
           </button>
@@ -165,106 +165,89 @@ function EditSale({ c, draft, update, onChangeCustomer, onReview }: { c: Custome
 
   return (
     <>
-      <h1 className="title-1" style={{ marginBlockEnd: 16 }}>{t('sale.title')}</h1>
-      {blocked && <div className="banner banner-blue">{t('sale.notActive')}</div>}
-      <div className="grid-2">
-        <div className="stack">
-          <section className="card stack-sm">
-            <div className="spread">
-              <div className="cell-main">
-                <span className="title-3">{c.name}</span>
-                <span className="small muted">{c.deliveryAddress ? t('sale.deliversTo', { address: c.deliveryAddress }) : t('sale.deliversBilling')}</span>
-                <span className="small muted">{c.paymentTermsDays ? t('common.dueInDays', { n: c.paymentTermsDays }) : t('common.dueOnReceipt')}</span>
-              </div>
-              <div className="stack-sm" style={{ alignItems: 'flex-end' }}>
-                <button className="link-btn" onClick={onChangeCustomer}>{t('sale.change')}</button>
-                <button className="link-btn small" style={{ fontWeight: 400 }} onClick={() => setPanel('address')}>{t('newCustomer.delivery')}</button>
-              </div>
-            </div>
-          </section>
+      <PageHeader back="/customers" title={t('sale.title')} />
+      {blocked && <div className="banner banner-grey">{t('sale.notActive')}</div>}
+      <div className="stack">
+        <section className="card spread" style={{ alignItems: 'flex-start' }}>
+          <div className="cell-main" style={{ gap: 4 }}>
+            <span className="title-3">{c.name}</span>
+            <button className="link-btn row-flex" style={{ gap: 6, color: 'var(--text-muted)', fontWeight: 400 }} onClick={() => setPanel('address')}>
+              {c.deliveryAddress ? t('sale.deliversTo', { address: c.deliveryAddress }) : t('sale.deliversBilling')} <CaretDown size={14} />
+            </button>
+            <span className="small muted">{c.paymentTermsDays ? t('common.dueInDays', { n: c.paymentTermsDays }) : t('common.dueOnReceipt')}</span>
+          </div>
+          <button className="link-btn" onClick={onChangeCustomer}>{t('sale.change')}</button>
+        </section>
 
-          <section className="card">
-            <h2 className="overline" style={{ marginBlockEnd: 4 }}>{t('sale.cartonsPerFlavour')}</h2>
-            <div className="flavours">
-              {FLAVOURS.map((f) => {
-                const n = draft.cartons[f] ?? 0;
-                const name = FLAVOUR_NAMES[f];
-                return (
-                  <div key={f} className="flavour-row">
-                    <FlavourDot flavour={f} />
-                    <span className="name">
-                      <span className="strong">{name}</span>
-                      <span className="small subtle">{t('common.units', { n: n * UNITS_PER_CARTON })}</span>
-                    </span>
-                    <span className="stepper">
-                      <button onClick={() => set(f, n - 1)} disabled={n === 0 || blocked} aria-label={t('sale.decrease', { flavour: name })}>
-                        <Minus size={18} />
-                      </button>
-                      <button className="value" onClick={() => setKeypad(f)} disabled={blocked} aria-label={`${t('sale.typeAmount', { flavour: name })}: ${n}`}>
-                        {n}
-                      </button>
-                      <button onClick={() => set(f, n + 1)} disabled={blocked} aria-label={t('sale.increase', { flavour: name })}>
-                        <Plus size={18} />
-                      </button>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+        <section>
+          <h2 className="section-title">{t('sale.cartonsPerFlavour')}</h2>
+          <div className="flavour-grid">
+            {FLAVOURS.map((f) => {
+              const n = draft.cartons[f] ?? 0;
+              const name = FLAVOUR_NAMES[f];
+              return (
+                <div key={f} className="flavour-card">
+                  <FlavourDot flavour={f} />
+                  <span className="name">
+                    <span className="flavour-name">{name}</span>
+                    <span className="small muted">{t('common.units', { n: n * UNITS_PER_CARTON })}</span>
+                  </span>
+                  <span className="stepper">
+                    <button onClick={() => set(f, n - 1)} disabled={n === 0 || blocked} aria-label={t('sale.decrease', { flavour: name })}>
+                      <Minus size={16} />
+                    </button>
+                    <button className="value" onClick={() => setKeypad(f)} disabled={blocked} aria-label={`${t('sale.typeAmount', { flavour: name })}: ${n}`}>
+                      {n}
+                    </button>
+                    <button onClick={() => set(f, n + 1)} disabled={blocked} aria-label={t('sale.increase', { flavour: name })}>
+                      <Plus size={16} />
+                    </button>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
-          <label className="field">
-            <span className="label">{t('sale.instructions')}</span>
-            <textarea
-              className="textarea"
-              style={{ minHeight: 72 }}
-              value={draft.instructions}
-              onChange={(e) => update({ instructions: e.target.value })}
-              placeholder={t('sale.instructionsHint')}
-              maxLength={500}
-            />
-          </label>
-        </div>
+        <section className="card stack-sm" aria-live="polite">
+          <div className="spread">
+            <span className="strong">{t('sale.priceList')}</span>
+            <span className="num">{t('sale.unitPrice', { price: fmt.money(calc.unitPriceCents) })}</span>
+          </div>
+          {calc.discounted && <span><span className="tag tag-accent"><Tag size={12} /> {t('sale.approvedPrice', { price: fmt.money(calc.unitPriceCents) })}</span></span>}
+          <p className="small muted">
+            {calc.nextTier
+              ? t('sale.nextTier', { cartons: calc.nextTier.cartonsToGo, units: calc.nextTier.cartonsToGo * UNITS_PER_CARTON, price: fmt.money(calc.nextTier.unitPriceCents) })
+              : t('sale.topTier')}
+          </p>
+          {c.pendingPriceRequest ? (
+            <p className="small row-flex" style={{ gap: 8 }}><span className="flavour-dot" style={{ background: 'var(--warn)', width: 6, height: 6 }} />{t('sale.pendingPrice', { price: fmt.money(c.pendingPriceRequest.targetUnitPriceCents) })}</p>
+          ) : (
+            <span>
+              <button className="link-btn small" disabled={blocked} onClick={() => setPanel('price')}>{t('sale.askAdmin')}</button>
+            </span>
+          )}
+        </section>
 
-        <aside className="stack">
-          <section className="card stack-sm" aria-live="polite">
-            <span className="overline">{t('sale.priceList')}</span>
-            <div className="title-2 num">{t('sale.unitPrice', { price: fmt.money(calc.unitPriceCents) })}</div>
-            {calc.discounted && <span className="tag tag-accent"><Tag size={12} /> {t('sale.approvedPrice', { price: fmt.money(calc.unitPriceCents) })}</span>}
-            <p className="small muted">
-              {calc.nextTier
-                ? t('sale.nextTier', { cartons: calc.nextTier.cartonsToGo, units: calc.nextTier.cartonsToGo * UNITS_PER_CARTON, price: fmt.money(calc.nextTier.unitPriceCents) })
-                : t('sale.topTier')}
-            </p>
-            <hr style={{ border: 0, borderBlockStart: '1px solid var(--line)', width: '100%', margin: '6px 0' }} />
-            {c.pendingPriceRequest ? (
-              <p className="small" style={{ color: 'var(--warn)' }}>{t('sale.pendingPrice', { price: fmt.money(c.pendingPriceRequest.targetUnitPriceCents) })}</p>
-            ) : (
-              <>
-                <p className="small muted">{t('sale.lowerPrice')}</p>
-                <button className="btn btn-sm" style={{ alignSelf: 'flex-start' }} disabled={blocked} onClick={() => setPanel('price')}>{t('sale.askAdmin')}</button>
-              </>
-            )}
-          </section>
-          <p className="hint">{t('sale.draftKept')}</p>
-        </aside>
+        <label className="field">
+          <span className="label">{t('sale.instructions')}</span>
+          <input className="input" value={draft.instructions} onChange={(e) => update({ instructions: e.target.value })} placeholder={t('sale.instructionsHint')} maxLength={500} />
+        </label>
       </div>
 
-      <div className="sale-foot">
+      <div className="action-bar">
         <div className="figure">
-          <span className="small muted">{t('common.cartons', { n: calc.totalCartons })}</span>
-          <span className="v">{t('common.units', { n: calc.totalUnits })}</span>
+          <span className="small muted num">{t('common.cartons', { n: calc.totalCartons })} · {t('common.units', { n: calc.totalUnits })}</span>
+          <span className="small">
+            {t('sale.commission')} <span className="num accent strong">{fmt.money(calc.commission.netCents)}</span>
+          </span>
         </div>
-        <div className="figure">
-          <span className="small muted">{t('sale.commission')}</span>
-          <span className="v accent">{fmt.money(calc.commission.netCents)}</span>
-        </div>
-        <div className="figure">
+        <div className="figure" style={{ marginInlineStart: 'auto', alignItems: 'flex-end' }}>
           <span className="small muted">{calc.reverseCharge ? t('sale.totalNoVat') : t('sale.total')}</span>
-          <span className="v">{fmt.money(calc.totalCents)}</span>
+          <span className="v num">{fmt.money(calc.totalCents)}</span>
         </div>
-        <button className="btn btn-primary" disabled={!calc.canContinue || blocked} onClick={onReview}>
-          {t('sale.review')} <CaretRight size={16} className="flip" />
+        <button className="btn btn-primary push" style={{ marginInlineStart: 0 }} disabled={!calc.canContinue || blocked} onClick={onReview}>
+          {t('sale.review')}
         </button>
       </div>
 
@@ -274,7 +257,7 @@ function EditSale({ c, draft, update, onChangeCustomer, onReview }: { c: Custome
         <Panel title={t('newCustomer.delivery')} onClose={() => setPanel(null)}>
           <p>{c.deliveryAddress ?? c.billingAddress}</p>
           <p className="muted">{t('sale.changeAddressNote')}</p>
-          <span className="tag">{t('common.comingLater')}</span>
+          <span><Pill tone="mute" dot={false}>{t('common.comingLater')}</Pill></span>
         </Panel>
       )}
     </>
@@ -336,26 +319,29 @@ function PricePanel({ c, units, tierCents, onClose }: { c: CustomerDetail; units
   return (
     <Panel
       title={t('title')}
+      sub={t('current', { price: fmt.money(tierCents) })}
       onClose={onClose}
+      error={send.error ? errorText(send.error) : undefined}
       footer={
         <>
           <button className="btn" onClick={onClose}>{tc('cancel')}</button>
-          <button className="btn btn-primary" disabled={!valid || send.isPending} onClick={() => send.mutate()}>{t('submit')}</button>
+          <button className="btn btn-primary" disabled={!valid} aria-busy={send.isPending} onClick={() => !send.isPending && send.mutate()}>
+            {send.isPending && <Spinner />}
+            {t('submit')}
+          </button>
         </>
       }
     >
-      <p className="muted">{t('current', { price: fmt.money(tierCents) })}</p>
       <label className="field">
         <span className="label">{t('target')}</span>
         <input className={`input num ${price && !valid ? 'input-error' : ''}`} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="4.95" />
         {price && !valid && <span className="error-text">{t('tooHigh')}</span>}
       </label>
-      {valid && units > 0 && <p className="small" style={{ color: 'var(--warn)' }}>{t('impact', { units, amount: fmt.money((tierCents - cents) * units) })}</p>}
+      {valid && units > 0 && <p className="small muted">{t('impact', { units, amount: fmt.money((tierCents - cents) * units) })}</p>}
       <label className="field">
         <span className="label">{t('note')}</span>
         <textarea className="textarea" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
       </label>
-      {send.error && <p className="error-text">{errorText(send.error)}</p>}
     </Panel>
   );
 }
@@ -394,75 +380,79 @@ function ReviewSale({ c, draft, update, clear, onBack }: { c: CustomerDetail; dr
   const validUntil = addDays(new Date(), PROFORMA_VALIDITY_DAYS);
   return (
     <>
-      <div className="row-flex" style={{ marginBlockEnd: 16 }}>
-        <button className="icon-btn" onClick={onBack} aria-label={t('common.back')}>
-          <ArrowLeft size={20} className="flip" />
-        </button>
-        <div className="cell-main">
-          <h1 className="title-1">{t('review.title')}</h1>
-          <span className="muted">{c.name}</span>
-        </div>
-      </div>
+      <PageHeader back={`/sales/new?customer=${c.id}`} title={t('review.title')} />
       <div className="grid-2">
-        <section className="card stack">
-          <div className="stack-sm">
-            {calc.lines.map((l) => (
-              <div key={l.flavour} className="spread">
-                <span className="row-flex">
-                  <FlavourDot flavour={l.flavour} />
-                  <span className="strong">{FLAVOUR_NAMES[l.flavour]}</span>
-                  <span className="muted small">{t('common.cartons', { n: l.cartons })} · {t('common.units', { n: l.units })}</span>
-                </span>
-                <span className="num">{fmt.money(l.lineNetCents)}</span>
-              </div>
-            ))}
-          </div>
-          <dl className="kv">
-            <dt>{t('review.net')}</dt>
-            <dd>{fmt.money(calc.netCents)}</dd>
-            <dt>{t('review.vat', { rate: calc.reverseCharge ? t('common.reverseCharge') : t('common.vat20') })}</dt>
-            <dd>{fmt.money(calc.vatCents)}</dd>
-            <dt className="total">{t('review.total')}</dt>
-            <dd className="total">{fmt.money(calc.totalCents)}</dd>
-          </dl>
-          {calc.discounted && <span className="tag tag-accent">{t('review.discounted')} · {fmt.money(calc.unitPriceCents)}</span>}
-          <div className="card card-tight card-accent stack-sm">
-            <span className="small muted">{t('review.commission')}</span>
-            <span className="num accent strong">
-              {t('common.plusVat', { net: fmt.money(calc.commission.netCents), vat: fmt.money(calc.commission.vatCents), gross: fmt.money(calc.commission.grossCents) })}
-            </span>
-          </div>
-        </section>
+        <div className="stack">
+          <section className="card cell-main" style={{ gap: 4 }}>
+            <span className="title-3">{c.name}</span>
+            <span className="small muted">{c.deliveryAddress ? t('sale.deliversTo', { address: c.deliveryAddress }) : t('sale.deliversBilling')}</span>
+            {draft.instructions && <span className="small muted">{draft.instructions}</span>}
+          </section>
+          <section className="card stack">
+            <div className="stack-sm">
+              {calc.lines.map((l) => (
+                <div key={l.flavour} className="spread">
+                  <span className="row-flex" style={{ gap: 10 }}>
+                    <FlavourDot flavour={l.flavour} />
+                    <span className="flavour-name">{FLAVOUR_NAMES[l.flavour]}</span>
+                    <span className="muted small num">{t('common.cartons', { n: l.cartons })} · {t('common.units', { n: l.units })}</span>
+                  </span>
+                  <span className="num">{fmt.money(l.lineNetCents)}</span>
+                </div>
+              ))}
+            </div>
+            <dl className="kv">
+              <dt>{t('review.net')}</dt>
+              <dd>{fmt.money(calc.netCents)}</dd>
+              <dt>{t('review.vat', { rate: calc.reverseCharge ? t('common.reverseCharge') : t('common.vat20') })}</dt>
+              <dd>{fmt.money(calc.vatCents)}</dd>
+              <dt className="total">{t('review.total')}</dt>
+              <dd className="total">{fmt.money(calc.totalCents)}</dd>
+            </dl>
+            {calc.discounted && <span><span className="tag tag-accent">{t('review.discounted')} · {fmt.money(calc.unitPriceCents)}</span></span>}
+            <div className="spread">
+              <span className="muted">{t('review.commission')}</span>
+              <span className="num accent strong">{fmt.money(calc.commission.netCents)}</span>
+            </div>
+          </section>
+        </div>
 
         <aside className="card stack">
-          <span className="overline">{t('review.proforma')}</span>
+          <h2 className="section-title" style={{ margin: 0 }}>{t('review.proforma')}</h2>
           <div className="field">
             <span className="label">{t('review.language')}</span>
-            <div className="seg" role="group" aria-label={t('review.language')}>
-              {(['en', 'bg'] as const).map((l) => (
+            <div className="seg seg-fill" role="group" aria-label={t('review.language')}>
+              {PROFORMA_LANGUAGES.map((l) => (
                 <button key={l} aria-pressed={draft.language === l} onClick={() => update({ language: l })} lang={l}>
-                  {l === 'en' ? 'English' : 'Български'}
+                  {LANGUAGE_NAMES[l]}
                 </button>
               ))}
             </div>
           </div>
           <dl className="kv">
             <dt>{t('review.validUntil')}</dt>
-            <dd>{fmt.date(validUntil, true)}</dd>
+            <dd className="num">{t('review.validFor', { date: fmt.date(validUntil, true), n: PROFORMA_VALIDITY_DAYS })}</dd>
             <dt>{t('review.goesTo')}</dt>
             <dd>{t('review.goesToValue')}</dd>
             <dt>{t('review.terms')}</dt>
             <dd>{c.paymentTermsDays ? t('common.dueInDays', { n: c.paymentTermsDays }) : t('common.dueOnReceipt')}</dd>
           </dl>
           <p className="small muted">{t('review.hold')}</p>
-          {send.error && <ErrorBox text={errorText(send.error)} />}
-          <div className="stack-sm">
-            <button className="btn btn-primary btn-block" disabled={send.isPending} onClick={() => send.mutate()}>
-              <PaperPlaneTilt size={18} className="flip" /> {send.isPending ? t('review.sending') : t('review.send')}
-            </button>
-            <span className="hint" style={{ textAlign: 'center' }}>{t('review.sendHint')}</span>
-          </div>
         </aside>
+      </div>
+
+      <div className="action-bar">
+        {send.error && (
+          <div style={{ flexBasis: '100%' }}>
+            <InlineError>{errorText(send.error)}</InlineError>
+          </div>
+        )}
+        <button className="btn btn-primary btn-tall push" aria-busy={send.isPending} onClick={() => !send.isPending && send.mutate()}>
+          <span className="row-flex" style={{ gap: 8 }}>
+            {send.isPending ? <Spinner /> : <PaperPlaneTilt size={18} className="flip" />} {t('review.send')}
+          </span>
+          <span className="sub">{t('review.sendSub')}</span>
+        </button>
       </div>
     </>
   );
