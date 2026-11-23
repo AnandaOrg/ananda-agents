@@ -27,7 +27,8 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); font: var(--type-body); -webkit-font-smoothing: antialiased; }
-body { transition: background-color 120ms; }
+body { transition: background-color 120ms; text-wrap-style: pretty; } /* no single word left on the last line */
+h1, h2 { text-wrap-style: balance; }
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: var(--focus-ring) solid var(--accent); outline-offset: 2px; }
@@ -173,8 +174,10 @@ h1, h2, h3, p { margin: 0; }
 .seg-fill { display: flex; }
 .seg-fill button { flex: 1 1 0; }
 
-/* Chip row (pick one), fills the width */
-.chip-row { display: flex; gap: var(--space-2); }
+/* Chip row (pick one), fills the width; labels too long for it (Bulgarian, phone sheets) scroll sideways.
+ * The 3px inset keeps focus rings from being clipped by the scroll box. */
+.chip-row { display: flex; gap: var(--space-2); overflow-x: auto; scrollbar-width: none; padding: 3px; margin: -3px; }
+.chip-row::-webkit-scrollbar { display: none; }
 .chip-row > button { flex: 1 1 0; min-height: var(--control-sm); padding: 0 var(--space-3); border-radius: var(--radius-full); border: 1px solid var(--line); background: var(--surface-1); color: var(--text-muted); cursor: pointer; font: var(--type-body-sm); white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); transition: background-color 120ms, color 120ms; }
 .chip-row > button:hover { background: var(--surface-2); color: var(--text); }
 .chip-row > button[aria-pressed="true"] { background: var(--accent); border-color: transparent; color: var(--on-accent); font-weight: 500; box-shadow: inset 0 0 0 1px var(--accent-edge); }
@@ -223,6 +226,18 @@ button.tile { cursor: pointer; font: inherit; color: inherit; }
 .tile-bad .tile-value { color: var(--bad); }
 .tile-accent { background: var(--accent-soft); border-color: var(--accent-line); }
 .tile-accent .tile-value { color: var(--accent-text); }
+
+/* InfoTip: (i) in a tile's corner, explanation on hover, focus or tap */
+.infotip { position: relative; display: inline-flex; margin: -4px; }
+.infotip-btn { width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-full); background: none; color: var(--text-muted); cursor: pointer; }
+.infotip-btn:hover, .infotip[data-open="true"] .infotip-btn { color: var(--text); background: var(--surface-2); }
+.infotip-bubble { position: absolute; z-index: 45; inset-block-end: calc(100% + 6px); inset-inline-end: -4px; width: max-content; max-width: min(280px, calc(100vw - 48px)); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--surface-3); color: var(--text); font: var(--type-caption); box-shadow: var(--shadow-popover); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 120ms, visibility 120ms; }
+.infotip[data-open="true"] .infotip-bubble, .infotip-btn:focus-visible + .infotip-bubble { opacity: 1; visibility: visible; }
+@media (hover: hover) { .infotip:hover .infotip-bubble { opacity: 1; visibility: visible; } }
+/* In a tile the bubble sits above the tile, never wider than it, so it can't run off a narrow screen. */
+.tile { position: relative; }
+.tile .infotip { position: static; }
+.tile .infotip-bubble { inset-inline-end: var(--space-3); max-width: calc(100% - 2 * var(--space-3)); }
 
 /* Banner: info (accent), problem (bad), warn, good, grey. Actions wrap under the text when narrow. */
 .banner { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3) var(--space-4); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--bad-line); background: var(--bad-soft); margin-block-end: var(--section-gap); }

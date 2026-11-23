@@ -9,7 +9,6 @@
     "loading": "Loading…",
     "error": "Something went wrong. Try again.",
     "offline": "No connection. Your sale draft is kept on this device.",
-    "salesAgent": "Sales agent",
     "admin": "Admin",
     "call": "Call",
     "email": "E-mail",
@@ -29,7 +28,8 @@
     "sameAsBilling": "Same as billing",
     "fromRegister": "From register",
     "broker": "Broker",
-    "getInTouch": "Get in touch"
+    "getInTouch": "Get in touch",
+    "moreInfo": "More about this"
   },
   "nav": {
     "customers": "Customers",
@@ -116,15 +116,15 @@
     "notCustomer": "Not a customer yet. You can add it.",
     "addNew": "Add as new customer",
     "freeTitle": "Free to claim",
-    "agentNone": "Agent: none",
+    "agentNone": "Broker: none",
     "lastOrder": "Last order {date}",
     "noOrders": "No orders yet",
     "claimText": "Claim it and it’s yours for 6 months.",
     "claim": "Claim customer",
-    "otherTitle": "Another agent’s customer",
-    "agent": "Agent: {name}",
+    "otherTitle": "Another broker’s customer",
+    "agent": "Broker: {name}",
     "freeFrom": "Free to claim from {date}",
-    "beingAdded": "Being added by another agent",
+    "beingAdded": "Being added by another broker",
     "private": "Their deals stay private.",
     "takeOver": "Ask to take over",
     "takeOverNote": "Why should it move to you? (optional)",
@@ -334,7 +334,7 @@
     "latePayments": "Late payments",
     "dueThisWeek": "Due this week",
     "remindersSent": "Reminders sent",
-    "adminsCopied": "Last 30 days · the Admins are copied",
+    "adminsCopied": "Last 30 days · the Admins are copied",
     "late": "Paying late",
     "dueSoon": "Due in the next 7 days",
     "noLate": "Nobody is paying late. Nice.",
@@ -586,5 +586,10 @@
     "copy": "Copy the codes",
     "copied": "Copied",
     "saved": "I've saved them, continue"
+  },
+  "languages": {
+    "en": "English",
+    "bg": "Bulgarian",
+    "he": "Hebrew"
   }
 }

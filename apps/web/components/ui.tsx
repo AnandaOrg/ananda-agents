@@ -2,7 +2,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ArrowClockwise, ArrowLeft, LockSimple, MagnifyingGlass, Tray, WarningCircle, X, type Icon } from '@phosphor-icons/react';
+import { ArrowClockwise, ArrowLeft, Info, LockSimple, MagnifyingGlass, Tray, WarningCircle, X, type Icon } from '@phosphor-icons/react';
 import type { CustomerChip, Flavour, OrderDisplayStatus } from '@ananda-agents/shared';
 import { ApiError } from '../lib/api';
 import { useFmt } from '../lib/hooks';
@@ -83,6 +83,33 @@ export function Tile({ label, value, sub, tone, onClick, href }: { label: string
   if (href) return <Link className={cls} href={href}>{inner}</Link>;
   if (onClick) return <button type="button" className={cls} onClick={onClick}>{inner}</button>;
   return <div className={cls}>{inner}</div>;
+}
+
+/** (i) in a tile's corner: the explanation shows on hover or focus, and on tap on touch screens. */
+export function InfoTip({ text }: { text: string }) {
+  const t = useTranslations('common');
+  const id = useId();
+  const ref = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+  return (
+    <span className="infotip" ref={ref} data-open={open}>
+      <button type="button" className="infotip-btn" aria-label={t('moreInfo')} aria-describedby={id} aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Info size={16} />
+      </button>
+      <span role="tooltip" id={id} className="infotip-bubble">{text}</span>
+    </span>
+  );
 }
 
 // ---------- PageHeader: breadcrumb lives in the shell; line above the title, title, actions ----------

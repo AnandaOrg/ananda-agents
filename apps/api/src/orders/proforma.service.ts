@@ -64,7 +64,7 @@ const L: Record<ProformaLanguage, Copy> = {
     hold: (d) => `Your stock is held until ${d}. It ships once the payment is confirmed.`,
     bank: 'Bank',
     instructions: 'Delivery instructions',
-    agent: 'Your sales agent',
+    agent: 'Your broker',
     note: 'This is a payment request, not a tax invoice. The invoice follows delivery.',
   },
   bg: {
@@ -92,7 +92,7 @@ const L: Record<ProformaLanguage, Copy> = {
     hold: (d) => `Стоката е запазена до ${d} и се изпраща след потвърждаване на плащането.`,
     bank: 'Банка',
     instructions: 'Указания за доставка',
-    agent: 'Вашият търговски представител',
+    agent: 'Вашият брокер',
     note: 'Това е искане за плащане, а не данъчна фактура. Фактурата се издава след доставката.',
   },
   he: {
@@ -120,7 +120,7 @@ const L: Record<ProformaLanguage, Copy> = {
     hold: (d) => `המלאי שלכם שמור עד ${d}. המשלוח יוצא לאחר אישור התשלום.`,
     bank: 'בנק',
     instructions: 'הוראות משלוח',
-    agent: 'איש המכירות שלכם',
+    agent: 'הברוקר שלכם',
     note: 'זוהי דרישת תשלום ולא חשבונית מס. החשבונית תונפק לאחר המסירה.',
   },
 };

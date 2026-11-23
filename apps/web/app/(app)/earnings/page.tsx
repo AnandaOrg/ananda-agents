@@ -1,9 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { CaretRight, Info } from '@phosphor-icons/react';
+import { CaretRight } from '@phosphor-icons/react';
 import { BankBanner, useCrumbs } from '../../../components/AppShell';
-import { CommissionChip, PageHeader, QueryError, SkeletonRows, SkeletonTiles, Tile } from '../../../components/ui';
+import { CommissionChip, InfoTip, PageHeader, QueryError, SkeletonRows, SkeletonTiles, Tile } from '../../../components/ui';
 import { useEarnings, useFmt } from '../../../lib/hooks';
 
 const COLS = 'minmax(0,1.4fr) minmax(0,1.4fr) 150px minmax(120px,0.7fr) 20px';
@@ -31,12 +31,9 @@ export default function EarningsPage() {
             <div className="tile tile-accent">
               <span className="tile-label spread">
                 {t('coming')}
-                <span title={t('comingInfo')} style={{ display: 'inline-flex' }}>
-                  <Info size={16} aria-hidden />
-                </span>
+                <InfoTip text={t('comingInfo')} />
               </span>
               <span className="tile-value">{fmt.money(q.data.comingCents)}</span>
-              <span className="tile-sub">{t('comingInfo')}</span>
             </div>
             <Tile label={t('paidMonth')} value={fmt.money(q.data.paidThisMonthCents)} />
             <Tile label={t('paidYear')} value={fmt.money(q.data.paidThisYearCents)} />

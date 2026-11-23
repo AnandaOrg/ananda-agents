@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChatCircleText, Check, FilePdf, Warning } from '@phosphor-icons/react';
-import { FLAVOUR_NAMES, LANGUAGE_NAMES, type OrderDetail } from '@ananda-agents/shared';
+import { FLAVOUR_NAMES, type OrderDetail } from '@ananda-agents/shared';
 import { useCrumbs } from '../../../../components/AppShell';
 import { ChaseActions } from '../../../../components/ChaseActions';
 import { FlavourDot, Loading, PageHeader, Panel, QueryError, Spinner } from '../../../../components/ui';
@@ -52,7 +52,7 @@ export default function OrderPage() {
             </button>
           </div>
           <span className="hint">
-            {t('order.language', { lang: LANGUAGE_NAMES[o.language] })}
+            {t('order.language', { lang: t(`languages.${o.language}`) })}
             {unpaid && ` · ${t('order.reminders', { n: o.reminders })}`}
             {unpaid && o.lastReminderAt && ` · ${t('order.lastReminder', { date: fmt.date(o.lastReminderAt, true) })}`}
           </span>
